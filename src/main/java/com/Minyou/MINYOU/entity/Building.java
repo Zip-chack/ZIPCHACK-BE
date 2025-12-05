@@ -35,4 +35,11 @@ public class Building {
     @Column(name = "built_year")
     private Integer builtYear;
 
+    @OneToMany(mappedBy = "building", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<Listing> listings = new ArrayList<>();
+
+    @OneToMany(mappedBy = "building", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<Review> reviews = new ArrayList<>();
 }
