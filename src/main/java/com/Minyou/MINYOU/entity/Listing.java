@@ -56,6 +56,10 @@ public class Listing {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @OneToMany(mappedBy = "listing", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<Review> reviews = new ArrayList<>();
+
     @ManyToMany(mappedBy = "favoriteListings")
     @Builder.Default
     private List<User> favoritedBy = new ArrayList<>();
