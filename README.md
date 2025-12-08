@@ -190,7 +190,7 @@ JPA의 `spring.jpa.hibernate.ddl-auto=update` 설정으로 자동으로 테이�
 
 ```bash
 # 프로덕션 빌드
-./mvnw clean package -DskipTests
+.\mvnw spring-boot:run
 
 # 빌드된 JAR 파일 실행
 java -jar target/MINYOU-0.0.1-SNAPSHOT.jar
