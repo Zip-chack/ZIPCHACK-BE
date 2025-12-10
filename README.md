@@ -108,7 +108,7 @@ KDATA_KEY=your_kdata_api_key
 - `APP_NAME`: 애플리케이션 이름 (기본값: MINYOU)
 - `SERVER_PORT`: 서버 포트 (기본값: 8080)
 - `KAKAO_MAP_REST_API_KEY`: 카카오맵 REST API 키 (필수)
-- `PUBLIC_DATA_API_KEY`: 공공데이터 API 키 (선택사항)
+- `KDATA_KEY`: 공공데이터 API 키 (선택사항)
 
 ## 📡 API 엔드포인트
 

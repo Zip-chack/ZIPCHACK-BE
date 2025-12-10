@@ -25,9 +25,9 @@ public class PublicDataService {
     public PublicDataService(KakaoMapService kakaoMapService) {
         this.kakaoMapService = kakaoMapService;
         Dotenv dotenv = Dotenv.load();
-        this.apiKey = dotenv.get("PUBLIC_DATA_API_KEY");
+        this.apiKey = dotenv.get("KDATA_KEY");
         if (this.apiKey == null || this.apiKey.isEmpty()) {
-            log.error("PUBLIC_DATA_API_KEY가 설정되지 않았습니다. 공공데이터 API 기능을 사용할 수 없습니다.");
+            log.error("KDATA_KEY가 설정되지 않았습니다. 공공데이터 API 기능을 사용할 수 없습니다.");
         } else {
             log.info("공공데이터 API 키가 설정되었습니다.");
         }
@@ -45,8 +45,8 @@ public class PublicDataService {
      */
     public List<Map<String, Object>> getApartmentRentData(String lawdCd, String dealYmd) {
         if (apiKey == null || apiKey.isEmpty()) {
-            log.error("PUBLIC_DATA_API_KEY가 설정되지 않아 아파트 전월세 데이터를 조회할 수 없습니다.");
-            throw new RuntimeException("공공데이터 API 키가 설정되지 않았습니다. PUBLIC_DATA_API_KEY 환경변수를 설정해주세요.");
+            log.error("KDATA_KEY가 설정되지 않아 아파트 전월세 데이터를 조회할 수 없습니다.");
+            throw new RuntimeException("공공데이터 API 키가 설정되지 않았습니다. KDATA_KEY 환경변수를 설정해주세요.");
         }
 
         try {
