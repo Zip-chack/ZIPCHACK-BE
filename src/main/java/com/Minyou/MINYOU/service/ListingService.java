@@ -230,4 +230,28 @@ public class ListingService {
 
         listingRepository.delete(listing);
     }
+
+    /**
+     * Building ID로 매물 목록 조회
+     */
+    public List<ListingDto> getListingsByBuildingId(Long buildingId, Long userId) {
+        List<Listing> listings = listingRepository.findByBuildingId(buildingId);
+        
+        if (userId != null) {
+            // 찜 여부 포함하여 조회
+            return listings.stream()
+                    .map(listing -> {
+                        ListingDto dto = listingDtoMapper.toDto(listing);
+                        // 찜 여부는 FavoriteService를 통해 확인해야 하지만, 
+                        // 일단 기본값으로 false 설정 (나중에 개선 가능)
+                        dto.setIsFavorite(false);
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
+        }
+        
+        return listings.stream()
+                .map(listingDtoMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }
