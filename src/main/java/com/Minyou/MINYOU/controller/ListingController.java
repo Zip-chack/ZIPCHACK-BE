@@ -1,6 +1,7 @@
 package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.dto.ListingDto;
+import com.Minyou.MINYOU.service.FavoriteService;
 import com.Minyou.MINYOU.service.ListingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ListingController {
     private final ListingService listingService;
+    private final FavoriteService favoriteService;
 
     @GetMapping
     public ResponseEntity<List<ListingDto>> getListings(
@@ -22,29 +24,43 @@ public class ListingController {
             @RequestParam(required = false) Integer maxPrice,
             @RequestParam(required = false) String search,
             @RequestHeader(value = "Authorization", required = false) String token) {
+        Long userId = null;
         try {
-            Long userId = extractUserIdFromToken(token);
-            List<ListingDto> listings = listingService.getAllListings(roomType, minPrice, maxPrice, search);
-            return ResponseEntity.ok(listings);
+            userId = extractUserIdFromToken(token);
+            System.out.println("매물 목록 조회 - 사용자 ID: " + userId);
         } catch (Exception e) {
-            Long userId = null;
-            List<ListingDto> listings = listingService.getAllListings(roomType, minPrice, maxPrice, search);
-            return ResponseEntity.ok(listings);
+            // 토큰이 없거나 유효하지 않은 경우 userId는 null
+            System.out.println("매물 목록 조회 - 토큰 없음 또는 유효하지 않음: " + e.getMessage());
         }
+        
+        List<ListingDto> listings = listingService.getAllListings(roomType, minPrice, maxPrice, search, userId);
+        
+        // 찜한 매물이 있는지 확인
+        long favoriteCount = listings.stream()
+                .filter(ListingDto::getIsFavorite)
+                .count();
+        System.out.println("매물 목록 조회 - 총 " + listings.size() + "개, 찜한 매물 " + favoriteCount + "개");
+        
+        return ResponseEntity.ok(listings);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ListingDto> getListingById(
             @PathVariable Long id,
             @RequestHeader(value = "Authorization", required = false) String token) {
+        ListingDto listing = listingService.getListingById(id, null);
+        
+        // 찜 여부 설정
         try {
             Long userId = extractUserIdFromToken(token);
-            ListingDto listing = listingService.getListingById(id, userId);
-            return ResponseEntity.ok(listing);
+            if (userId != null) {
+                listing.setIsFavorite(favoriteService.isFavorite(id, userId));
+            }
         } catch (Exception e) {
-            ListingDto listing = listingService.getListingById(id, null);
-            return ResponseEntity.ok(listing);
+            // 토큰이 없거나 유효하지 않은 경우 찜 여부는 false
         }
+        
+        return ResponseEntity.ok(listing);
     }
 
     @PostMapping
@@ -93,8 +109,8 @@ public class ListingController {
             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
             Long userId = extractUserIdFromToken(token);
-            ListingDto listing = listingService.toggleFavorite(id, userId);
-            return ResponseEntity.ok(Map.of("is_favorite", listing.getIsFavorite()));
+            boolean isFavorite = favoriteService.toggleFavorite(id, userId);
+            return ResponseEntity.ok(Map.of("is_favorite", isFavorite));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -105,7 +121,7 @@ public class ListingController {
             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
             Long userId = extractUserIdFromToken(token);
-            List<ListingDto> favorites = listingService.getFavorites(userId);
+            List<ListingDto> favorites = favoriteService.getFavorites(userId);
             return ResponseEntity.ok(favorites);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
