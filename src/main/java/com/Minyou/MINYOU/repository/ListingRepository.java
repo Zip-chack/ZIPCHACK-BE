@@ -76,4 +76,9 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
         "ORDER BY l.created_at DESC", 
         nativeQuery = true)
     List<Object[]> findByMonthlyRentBetweenWithFavoriteStatus(@Param("min") Integer min, @Param("max") Integer max, @Param("userId") Long userId);
+
+    /**
+     * Building ID로 매물 조회
+     */
+    List<Listing> findByBuildingId(Long buildingId);
 }
