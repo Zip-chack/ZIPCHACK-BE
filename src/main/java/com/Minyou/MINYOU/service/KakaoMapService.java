@@ -264,5 +264,56 @@ public class KakaoMapService {
         log.info("경계 내 건물 검색 완료: {}개 건물 발견", allResults.size());
         return allResults;
     }
+
+    /**
+     * 주변 상권 정보 조회 (편의점, 카페, 마트, 음식점, 약국 등)
+     * @param lat 위도
+     * @param lng 경도
+     * @param radius 반경 (미터, 기본값 500m)
+     * @return 상권 정보 맵 (카테고리별 개수)
+     */
+    public Map<String, Object> getNearbyCommerceInfo(Double lat, Double lng, Integer radius) {
+        if (apiKey == null || apiKey.isEmpty()) {
+            log.error("KAKAO_MAP_REST_API_KEY가 설정되지 않아 상권 정보 조회를 수행할 수 없습니다.");
+            throw new RuntimeException("카카오맵 API 키가 설정되지 않았습니다. KAKAO_MAP_REST_API_KEY 환경변수를 설정해주세요.");
+        }
+
+        if (radius == null) {
+            radius = 500; // 기본 반경 500m
+        }
+
+        Map<String, Object> commerceInfo = new HashMap<>();
+        
+        // 검색할 카테고리 키워드들
+        Map<String, String> categories = new HashMap<>();
+        categories.put("convenienceStore", "편의점");
+        categories.put("cafe", "카페");
+        categories.put("mart", "마트");
+        categories.put("restaurant", "음식점");
+        categories.put("pharmacy", "약국");
+        categories.put("bank", "은행");
+        categories.put("hospital", "병원");
+        categories.put("subway", "지하철역");
+
+        // 각 카테고리별로 검색하여 개수 집계
+        for (Map.Entry<String, String> entry : categories.entrySet()) {
+            String categoryKey = entry.getKey();
+            String keyword = entry.getValue();
+            
+            try {
+                List<Map<String, Object>> results = searchKeyword(keyword, lat, lng, radius);
+                commerceInfo.put(categoryKey, results.size());
+                
+                // API 호출 제한을 고려하여 약간의 지연
+                Thread.sleep(100);
+            } catch (Exception e) {
+                log.warn("카테고리 '{}' 검색 중 오류: {}", keyword, e.getMessage());
+                commerceInfo.put(categoryKey, 0);
+            }
+        }
+
+        log.debug("주변 상권 정보 조회 완료: 위도 {}, 경도 {}, 반경 {}m", lat, lng, radius);
+        return commerceInfo;
+    }
 }
 

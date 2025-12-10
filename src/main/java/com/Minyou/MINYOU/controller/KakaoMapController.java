@@ -84,5 +84,21 @@ public class KakaoMapController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
+    /**
+     * 주변 상권 정보 조회 (편의점, 카페, 마트 등)
+     */
+    @GetMapping("/nearby-commerce")
+    public ResponseEntity<?> getNearbyCommerceInfo(
+            @RequestParam Double lat,
+            @RequestParam Double lng,
+            @RequestParam(required = false, defaultValue = "500") Integer radius) {
+        try {
+            Map<String, Object> results = kakaoMapService.getNearbyCommerceInfo(lat, lng, radius);
+            return ResponseEntity.ok(results);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }
 
