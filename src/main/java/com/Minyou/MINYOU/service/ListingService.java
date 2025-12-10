@@ -174,11 +174,19 @@ public class ListingService {
 
     @Transactional
     public ListingDto createListing(ListingDto listingDto, Long userId) {
+        if (listingDto == null) {
+            throw new RuntimeException("매물 정보가 없습니다.");
+        }
+        
+        if (listingDto.getBuilding() == null || listingDto.getBuilding().getId() == null) {
+            throw new RuntimeException("건물 정보가 없습니다.");
+        }
+        
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다. 로그인이 필요합니다."));
 
         Building building = buildingRepository.findById(listingDto.getBuilding().getId())
-                .orElseThrow(() -> new RuntimeException("건물을 찾을 수 없습니다."));
+                .orElseThrow(() -> new RuntimeException("건물을 찾을 수 없습니다. 건물 ID: " + listingDto.getBuilding().getId()));
 
         Listing listing = Listing.builder()
                 .title(listingDto.getTitle())
