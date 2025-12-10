@@ -64,15 +64,27 @@ public class ListingController {
     }
 
     @PostMapping
-    public ResponseEntity<ListingDto> createListing(
+    public ResponseEntity<?> createListing(
             @RequestBody ListingDto listingDto,
             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
+            System.out.println("매물 등록 요청 받음 - Building ID: " + 
+                (listingDto.getBuilding() != null ? listingDto.getBuilding().getId() : "null"));
+            System.out.println("매물 등록 요청 받음 - Title: " + listingDto.getTitle());
+            
             Long userId = extractUserIdFromToken(token);
+            System.out.println("매물 등록 - 사용자 ID: " + userId);
+            
             ListingDto listing = listingService.createListing(listingDto, userId);
             return ResponseEntity.ok(listing);
+        } catch (RuntimeException e) {
+            System.err.println("매물 등록 실패 (RuntimeException): " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            System.err.println("매물 등록 실패 (Exception): " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("error", "매물 등록 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 
