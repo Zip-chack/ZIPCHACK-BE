@@ -121,8 +121,8 @@ public class ListingService {
         java.util.Map<Long, Boolean> favoriteMap = new java.util.HashMap<>();
         
         for (Object[] row : results) {
-            // 첫 번째 컬럼이 id (BigInteger로 반환됨)
-            Long listingId = ((BigInteger) row[0]).longValue();
+            // 첫 번째 컬럼이 id (Number 타입으로 반환됨 - Long 또는 BigInteger)
+            Long listingId = ((Number) row[0]).longValue();
             listingIds.add(listingId);
             
             // 마지막 컬럼이 is_favorite
