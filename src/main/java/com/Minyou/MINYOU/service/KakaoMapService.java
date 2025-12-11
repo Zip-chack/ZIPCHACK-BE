@@ -50,6 +50,7 @@ public class KakaoMapService {
         }
         
         try {
+            log.debug("카카오맵 주소 검색 API 호출: {}", address);
             String response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/v2/local/search/address.json")
@@ -58,6 +59,13 @@ public class KakaoMapService {
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();
+
+            log.debug("카카오맵 API 응답: {}", response);
+            
+            if (response == null || response.isEmpty()) {
+                log.error("카카오맵 API 응답이 비어있습니다.");
+                throw new RuntimeException("카카오맵 API 응답이 비어있습니다.");
+            }
 
             JsonNode root = objectMapper.readTree(response);
             
@@ -74,13 +82,22 @@ public class KakaoMapService {
                 JsonNode firstDoc = documents.get(0);
                 Map<String, Object> result = new HashMap<>();
                 result.put("address", firstDoc.get("address_name").asText());
-                result.put("roadAddress", firstDoc.get("road_address") != null 
-                    ? firstDoc.get("road_address").get("address_name").asText() 
-                    : firstDoc.get("address_name").asText());
+                
+                // road_address가 있는지 확인
+                JsonNode roadAddress = firstDoc.get("road_address");
+                if (roadAddress != null && roadAddress.has("address_name")) {
+                    result.put("roadAddress", roadAddress.get("address_name").asText());
+                } else {
+                    result.put("roadAddress", firstDoc.get("address_name").asText());
+                }
+                
                 result.put("lat", Double.parseDouble(firstDoc.get("y").asText()));
                 result.put("lng", Double.parseDouble(firstDoc.get("x").asText()));
+                log.debug("주소 검색 결과: lat={}, lng={}", result.get("lat"), result.get("lng"));
                 return result;
             }
+            
+            log.warn("주소 검색 결과가 없습니다: {}", address);
             return null;
         } catch (RuntimeException e) {
             throw e;

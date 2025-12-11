@@ -2,6 +2,7 @@ package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.service.KakaoMapService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/kakao")
 @RequiredArgsConstructor
+@Slf4j
 public class KakaoMapController {
     private final KakaoMapService kakaoMapService;
 
@@ -20,13 +22,25 @@ public class KakaoMapController {
     @GetMapping("/address")
     public ResponseEntity<?> searchAddress(@RequestParam String query) {
         try {
-            Map<String, Object> result = kakaoMapService.searchAddress(query);
+            log.info("주소 검색 요청: {}", query);
+            if (query == null || query.trim().isEmpty()) {
+                log.warn("빈 검색어로 주소 검색 시도");
+                return ResponseEntity.badRequest().body(Map.of("error", "검색어를 입력해주세요."));
+            }
+            
+            Map<String, Object> result = kakaoMapService.searchAddress(query.trim());
             if (result != null) {
+                log.info("주소 검색 성공: {} -> lat: {}, lng: {}", query, result.get("lat"), result.get("lng"));
                 return ResponseEntity.ok(result);
             }
+            log.warn("주소 검색 결과 없음: {}", query);
             return ResponseEntity.notFound().build();
         } catch (RuntimeException e) {
+            log.error("주소 검색 실패: {} - {}", query, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("주소 검색 중 예외 발생: {} - {}", query, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", "주소 검색 중 오류가 발생했습니다: " + e.getMessage()));
         }
     }
 
