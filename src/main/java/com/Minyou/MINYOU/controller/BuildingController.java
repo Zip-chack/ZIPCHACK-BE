@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/buildings")
+@RequestMapping(value = "/api/buildings", produces = "application/json; charset=UTF-8")
 @RequiredArgsConstructor
 public class BuildingController {
     private final BuildingService buildingService;
@@ -20,7 +20,7 @@ public class BuildingController {
     @GetMapping
     public ResponseEntity<List<BuildingDto>> getBuildings() {
         List<BuildingDto> buildings = buildingService.getAllBuildings();
-        return ResponseEntity.ok(buildings);
+        return ResponseEntity.ok().header("Content-Type", "application/json; charset=UTF-8").body(buildings);
     }
 
     @GetMapping("/{id}")

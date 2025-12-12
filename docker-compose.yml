@@ -23,12 +23,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: minyou-backend
+    env_file:
+      - .env
     environment:
       APP_NAME: ${APP_NAME:-MINYOU}
       SERVER_PORT: ${SERVER_PORT:-8080}
       DB_URL: jdbc:mysql://mysql:3306/zip_chack?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword}
+    volumes:
+      - ./.env:/app/.env:ro
     ports:
       - "${SERVER_PORT:-8081}:8080"
     depends_on:
