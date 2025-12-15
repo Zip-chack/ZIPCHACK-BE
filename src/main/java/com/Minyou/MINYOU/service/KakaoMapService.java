@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +30,11 @@ public class KakaoMapService {
         if (this.apiKey == null || this.apiKey.isEmpty()) {
             log.error("KAKAO_MAP_REST_API_KEY가 설정되지 않았습니다. 카카오맵 API 기능을 사용할 수 없습니다.");
         } else {
-            log.info("카카오맵 REST API 키가 설정되었습니다.");
+            log.info("카카오맵 REST API 키가 설정되었습니다. (키 길이: {}자)", this.apiKey.length());
+            // API 키의 처음 8자만 로그에 표시 (보안)
+            if (this.apiKey.length() >= 8) {
+                log.debug("API 키 앞 8자: {}...", this.apiKey.substring(0, 8));
+            }
         }
         
         this.webClient = WebClient.builder()
@@ -131,6 +136,14 @@ public class KakaoMapService {
                         return uriBuilder.build();
                     })
                     .retrieve()
+                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), 
+                        clientResponse -> {
+                            return clientResponse.bodyToMono(String.class)
+                                .flatMap(errorBody -> {
+                                    log.error("카카오맵 API 오류 응답 ({}): {}", clientResponse.statusCode(), errorBody);
+                                    return Mono.error(new RuntimeException("카카오맵 API 오류: " + clientResponse.statusCode() + " - " + errorBody));
+                                });
+                        })
                     .bodyToMono(String.class)
                     .block();
 
