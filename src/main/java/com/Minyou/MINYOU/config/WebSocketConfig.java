@@ -1,5 +1,6 @@
 package com.Minyou.MINYOU.config;
 
+import com.Minyou.MINYOU.interceptor.StompJwtAuthInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
