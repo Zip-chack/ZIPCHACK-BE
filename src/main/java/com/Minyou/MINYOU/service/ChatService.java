@@ -25,9 +25,12 @@ public class ChatService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ListingRepository listingRepository;
-    private final UserRepository userRepository;   // Changed: Injected UserRepository
+    private final UserRepository userRepository;
     private final SimpMessageSendingOperations messagingTemplate;
 
+    /**
+     * 매물 ID와 구매자 ID 기준으로 채팅방을 조회하거나 없으면 새로 생성한다.
+     */
     @Transactional
     public ChatRoomResponse createOrGetRoom(Long listingId, Long buyerId) {
         return chatRoomRepository.findByListingIdAndBuyerId(listingId, buyerId)
@@ -51,6 +54,9 @@ public class ChatService {
                 });
     }
 
+    /**
+     * 사용자가 참여 중인 모든 채팅방 목록과 마지막 메시지를 조회한다.
+     */
     public List<MyChatRoomResponse> getMyChatRooms(Long userId) {
         List<ChatRoom> rooms = chatRoomRepository.findByOwnerIdOrBuyerId(userId, userId);
         return rooms.stream().map(room -> {
@@ -66,6 +72,9 @@ public class ChatService {
         }).collect(Collectors.toList());
     }
 
+    /**
+     * 특정 채팅방의 전체 메시지를 시간순으로 조회한다.
+     */
     @Transactional(readOnly = true)
     public List<ChatMessageResponse> getChatMessages(Long roomId, Long userId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
@@ -79,6 +88,9 @@ public class ChatService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 채팅 메시지를 저장하고 상대방 사용자 ID를 반환한다.
+     */
     @Transactional
     public Long saveMessageAndGetOpponentId(Long roomId, ChatMessageDto dto) {
         ChatRoom room = chatRoomRepository.findById(roomId)
@@ -88,6 +100,7 @@ public class ChatService {
             throw new IllegalStateException("This chat room is already completed.");
         }
 
+        // 첫 메시지 전송 시 상태를 NEGOTIATING으로 변경
         if (room.getStatus() == ChatRoomStatus.WAITING) {
             if (chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId).isEmpty()) {
                 room.updateStatus(ChatRoomStatus.NEGOTIATING);
@@ -104,6 +117,9 @@ public class ChatService {
         return room.getOwnerId().equals(dto.getSenderId()) ? room.getBuyerId() : room.getOwnerId();
     }
 
+    /**
+     * 채팅방을 거래 완료 상태로 변경하고 시스템 메시지를 전송한다.
+     */
     @Transactional
     public void completeChat(Long roomId, Long userId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
@@ -121,6 +137,9 @@ public class ChatService {
         sendSystemMessage(room, "거래가 완료되었습니다. 이 채팅방은 종료됩니다.");
     }
 
+    /**
+     * 채팅방 참여자 모두에게 시스템 메시지를 전송한다.
+     */
     private void sendSystemMessage(ChatRoom room, String content) {
         ChatMessageDto systemMessage = new ChatMessageDto(0L, content);
         messagingTemplate.convertAndSend("/queue/chat/" + room.getId() + "/user/" + room.getOwnerId(), systemMessage);
