@@ -8,6 +8,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public class ChatRoomResponse {
     private Long roomId;
-    private Long opponentId;
+    private Long targetUserId;
+    private String targetUserNickname;
     private ChatRoomStatus status;
 }

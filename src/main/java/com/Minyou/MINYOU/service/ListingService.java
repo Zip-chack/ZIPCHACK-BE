@@ -165,8 +165,10 @@ public class ListingService {
     }
 
     public ListingDto getListingById(Long id, Long userId) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingRepository.findByIdWithDetails(id);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
         // 찜 여부는 Controller에서 설정하도록 변경
         return listingDtoMapper.toDto(listing, false);

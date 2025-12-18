@@ -81,4 +81,10 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * Building ID로 매물 조회
      */
     List<Listing> findByBuildingId(Long buildingId);
+
+    /**
+     * ID로 매물 조회 시 User와 Building 정보를 함께 fetch
+     */
+    @Query("SELECT l FROM Listing l JOIN FETCH l.user JOIN FETCH l.building WHERE l.id = :id")
+    Listing findByIdWithDetails(@Param("id") Long id);
 }

@@ -64,6 +64,11 @@ public class Listing {
     @Builder.Default
     private List<User> favoritedBy = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private ListingStatus status = ListingStatus.AVAILABLE;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

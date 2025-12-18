@@ -21,6 +21,8 @@ public class ListingDto {
     private String image;
     private Double rating;
     private Integer reviewCount;
+    private String status;
     private Boolean isFavorite;
     private BuildingDto building;
+    private UserDto owner;
 }

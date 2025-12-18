@@ -1,6 +1,8 @@
 package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.dto.ChatMessageDto;
+import com.Minyou.MINYOU.dto.ChatMessageResponse;
+import com.Minyou.MINYOU.entity.ChatMessage;
 import com.Minyou.MINYOU.service.ChatService;
 import com.Minyou.MINYOU.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -32,16 +34,24 @@ public class ChatMessageController {
         chatMessageDto.setSenderId(senderId);
 
         try {
-            // 메시지를 저장하고 상대방 사용자 ID 조회
-            Long opponentId = chatService.saveMessageAndGetOpponentId(roomId, chatMessageDto);
+            // 메시지를 저장하고 저장된 엔티티를 받음
+            ChatMessage savedMessage = chatService.saveMessage(roomId, chatMessageDto);
 
-            // 보내는 사람에게 메시지 전송
-            messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + senderId, chatMessageDto);
-            // 받는 사람에게 메시지 전송
-            messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + opponentId, chatMessageDto);
+            // 클라이언트에 보낼 응답 DTO 생성
+            ChatMessageResponse responseDto = new ChatMessageResponse(savedMessage);
+            responseDto.setClientMessageId(chatMessageDto.getClientMessageId()); // 클라이언트 임시 ID를 다시 실어 보냄
+
+            // 상대방 ID 조회
+            Long opponentId = savedMessage.getChatRoom().getOwnerId().equals(senderId) 
+                            ? savedMessage.getChatRoom().getBuyerId() 
+                            : savedMessage.getChatRoom().getOwnerId();
+
+            // 보내는 사람과 받는 사람 모두에게 완전한 메시지 응답 전송
+            messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + senderId, responseDto);
+            messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + opponentId, responseDto);
         } catch (IllegalStateException e) {
             // 거래 완료된 채팅방에 메시지를 보낸 경우 에러 메시지 전송
-            ChatMessageDto errorDto = new ChatMessageDto(0L, e.getMessage());
+            ChatMessageDto errorDto = new ChatMessageDto(0L, e.getMessage(), chatMessageDto.getClientMessageId());
             messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + senderId, errorDto);
         }
     }

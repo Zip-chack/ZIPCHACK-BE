@@ -2,6 +2,7 @@ package com.Minyou.MINYOU.mapper;
 
 import com.Minyou.MINYOU.dto.BuildingDto;
 import com.Minyou.MINYOU.dto.ListingDto;
+import com.Minyou.MINYOU.dto.UserDto;
 import com.Minyou.MINYOU.entity.Listing;
 import org.springframework.stereotype.Component;
 
@@ -45,6 +46,7 @@ public class ListingDtoMapper {
                 .areaM2(listing.getAreaM2())
                 .floor(listing.getFloor())
                 .image(listing.getImageUrl())
+                .status(listing.getStatus().name())
                 .rating(rating)
                 .reviewCount(listing.getReviews().size())
                 .isFavorite(isFavorite)
@@ -55,6 +57,11 @@ public class ListingDtoMapper {
                         .lat(listing.getBuilding().getLat())
                         .lng(listing.getBuilding().getLng())
                         .builtYear(listing.getBuilding().getBuiltYear())
+                        .build())
+                .owner(UserDto.builder()
+                        .id(listing.getUser().getId())
+                        .email(listing.getUser().getEmail())
+                        .nickname(listing.getUser().getNickname())
                         .build())
                 .build();
     }

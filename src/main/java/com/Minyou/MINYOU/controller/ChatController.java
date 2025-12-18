@@ -41,6 +41,16 @@ public class ChatController {
         return ResponseEntity.ok(rooms);
     }
 
+    @GetMapping("/rooms/{roomId}")
+    public ResponseEntity<ChatRoomResponse> getChatRoomDetails(
+            @PathVariable Long roomId,
+            @RequestHeader("Authorization") String token
+    ) {
+        Long userId = tokenUtil.extractUserIdFromToken(token);
+        ChatRoomResponse response = chatService.getRoomById(roomId, userId);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * 특정 채팅방의 전체 메시지 목록을 조회한다.
      */
