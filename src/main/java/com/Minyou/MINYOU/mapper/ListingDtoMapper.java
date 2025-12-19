@@ -4,6 +4,7 @@ import com.Minyou.MINYOU.dto.BuildingDto;
 import com.Minyou.MINYOU.dto.ListingDto;
 import com.Minyou.MINYOU.dto.UserDto;
 import com.Minyou.MINYOU.entity.Listing;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
  * 순환 참조를 방지하기 위해 별도 컴포넌트로 분리
  */
 @Component
+@Slf4j
 public class ListingDtoMapper {
 
     /**
@@ -36,6 +38,13 @@ public class ListingDtoMapper {
                 .average()
                 .orElse(0.0);
 
+        String imageUrl = listing.getImageUrl();
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            log.debug("매물 {} 이미지 URL: {}", listing.getId(), imageUrl);
+        } else {
+            log.debug("매물 {} 이미지 URL이 없습니다.", listing.getId());
+        }
+        
         return ListingDto.builder()
                 .id(listing.getId())
                 .title(listing.getTitle())
@@ -45,7 +54,7 @@ public class ListingDtoMapper {
                 .maintenanceFee(listing.getMaintenanceFee())
                 .areaM2(listing.getAreaM2())
                 .floor(listing.getFloor())
-                .image(listing.getImageUrl())
+                .image(imageUrl)
                 .status(listing.getStatus().name())
                 .rating(rating)
                 .reviewCount(listing.getReviews().size())
