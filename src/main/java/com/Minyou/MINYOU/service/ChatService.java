@@ -33,37 +33,34 @@ public class ChatService {
     /**
      * 매물 ID와 구매자 ID 기준으로 채팅방을 조회하거나 없으면 새로 생성한다.
      */
-    @Transactional
     public ChatRoomResponse createOrGetRoom(Long listingId, Long loginUserId) {
         return chatRoomRepository.findByListingIdAndBuyerId(listingId, loginUserId)
                 .map(room -> {
-                    // 기존 채팅방이 있을 경우,
-                    // 로그인 사용자가 owner인지 buyer인지에 따라 상대방을 결정
                     Long targetUserId = room.getOwnerId().equals(loginUserId) ? room.getBuyerId() : room.getOwnerId();
                     String targetUserNickname = userRepository.findById(targetUserId)
                             .map(com.Minyou.MINYOU.entity.User::getNickname)
                             .orElse("Unknown User");
-                    return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus());
+                    boolean amIOwner = room.getOwnerId().equals(loginUserId);
+                    return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus(), amIOwner);
                 })
                 .orElseGet(() -> {
-                    // 채팅방이 없는 경우 새로 생성
                     Listing listing = listingRepository.findById(listingId)
                             .orElseThrow(() -> new IllegalArgumentException("Listing not found"));
                     if (listing.getUser().getId().equals(loginUserId)) {
                         throw new IllegalArgumentException("Owner cannot start a chat with themselves.");
                     }
-
-                    // 채팅 상대방은 매물 등록자
+                    
                     User targetUser = listing.getUser();
 
                     ChatRoom newRoom = ChatRoom.builder()
                             .listingId(listingId)
-                            .ownerId(targetUser.getId()) // 매물 소유자
-                            .buyerId(loginUserId)        // 채팅을 시작한 사용자
+                            .ownerId(targetUser.getId()) // Listing owner is the owner of the chat
+                            .buyerId(loginUserId)         // Initiating user is the buyer of the chat
                             .build();
                     chatRoomRepository.save(newRoom);
                     
-                    return new ChatRoomResponse(newRoom.getId(), targetUser.getId(), targetUser.getNickname(), newRoom.getStatus());
+                    boolean amIOwner = false;
+                    return new ChatRoomResponse(newRoom.getId(), targetUser.getId(), targetUser.getNickname(), newRoom.getStatus(), amIOwner);
                 });
     }
 
@@ -111,7 +108,6 @@ public class ChatService {
     /**
      * 특정 채팅방의 상세 정보를 조회한다.
      */
-    @Transactional(readOnly = true)
     public ChatRoomResponse getRoomById(Long roomId, Long loginUserId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
@@ -122,7 +118,8 @@ public class ChatService {
         String targetUserNickname = userRepository.findById(targetUserId)
                 .map(com.Minyou.MINYOU.entity.User::getNickname)
                 .orElse("Unknown User");
-        return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus());
+        boolean amIOwner = room.getOwnerId().equals(loginUserId);
+        return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus(), amIOwner);
     }
 
     /**

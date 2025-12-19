@@ -11,4 +11,5 @@ public class ChatRoomResponse {
     private Long targetUserId;
     private String targetUserNickname;
     private ChatRoomStatus status;
+    private boolean amIOwner;
 }
