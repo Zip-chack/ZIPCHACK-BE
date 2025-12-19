@@ -76,4 +76,17 @@ public class ChatController {
         chatService.completeChat(roomId, userId);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * 채팅방을 삭제한다.
+     */
+    @DeleteMapping("/rooms/{roomId}")
+    public ResponseEntity<Void> deleteChatRoom(
+            @PathVariable Long roomId,
+            @RequestHeader("Authorization") String token
+    ) {
+        Long userId = tokenUtil.extractUserIdFromToken(token);
+        chatService.deleteChatRoom(roomId, userId);
+        return ResponseEntity.ok().build();
+    }
 }

@@ -3,6 +3,7 @@ package com.Minyou.MINYOU.controller;
 import com.Minyou.MINYOU.dto.ChatMessageDto;
 import com.Minyou.MINYOU.dto.ChatMessageResponse;
 import com.Minyou.MINYOU.entity.ChatMessage;
+import com.Minyou.MINYOU.interceptor.StompJwtAuthInterceptor; // Import the interceptor
 import com.Minyou.MINYOU.service.ChatService;
 import com.Minyou.MINYOU.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -18,9 +19,10 @@ public class ChatMessageController {
 
     private final ChatService chatService;
     private final SimpMessageSendingOperations messagingTemplate;
+    private final StompJwtAuthInterceptor stompJwtAuthInterceptor; // Inject the interceptor
 
     /**
-     * WebSocket을 통해 채팅 메시지를 수신하고 상대방에게 실시간으로 전달한다.
+     * WebSocket을 통해 채팅 메시지를 수신하고 온라인 상태인 상대방에게만 실시간으로 전달한다.
      */
     @MessageMapping("/chat/send/{roomId}")
     public void sendMessage(
@@ -46,9 +48,14 @@ public class ChatMessageController {
                             ? savedMessage.getChatRoom().getBuyerId() 
                             : savedMessage.getChatRoom().getOwnerId();
 
-            // 보내는 사람과 받는 사람 모두에게 완전한 메시지 응답 전송
+            // 보내는 사람에게 메시지 전송 (항상 온라인 상태)
             messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + senderId, responseDto);
-            messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + opponentId, responseDto);
+
+            // 받는 사람이 온라인 상태일 경우에만 메시지 전송
+            if (stompJwtAuthInterceptor.getActiveSessions().containsKey(opponentId)) {
+                messagingTemplate.convertAndSend("/queue/chat/" + roomId + "/user/" + opponentId, responseDto);
+            }
+            
         } catch (IllegalStateException e) {
             // 거래 완료된 채팅방에 메시지를 보낸 경우 에러 메시지 전송
             ChatMessageDto errorDto = new ChatMessageDto(0L, e.getMessage(), chatMessageDto.getClientMessageId());

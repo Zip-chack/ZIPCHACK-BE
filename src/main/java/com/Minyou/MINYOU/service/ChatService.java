@@ -180,6 +180,25 @@ public class ChatService {
     }
 
     /**
+     * 채팅방과 관련된 모든 메시지를 삭제하고 채팅방을 삭제한다.
+     */
+    @Transactional
+    public void deleteChatRoom(Long roomId, Long userId) {
+        ChatRoom room = chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+
+        if (!room.getOwnerId().equals(userId) && !room.getBuyerId().equals(userId)) {
+            throw new SecurityException("You do not have permission to delete this chat room.");
+        }
+
+        // 1. 채팅 메시지 삭제
+        chatMessageRepository.deleteByChatRoomId(roomId);
+
+        // 2. 채팅방 삭제
+        chatRoomRepository.deleteById(roomId);
+    }
+
+    /**
      * 채팅방 참여자 모두에게 시스템 메시지를 전송한다.
      */
     private void sendSystemMessage(ChatRoom room, String content) {
