@@ -21,6 +21,13 @@ CREATE TABLE users (
                        email VARCHAR(255) NOT NULL UNIQUE,
                        password VARCHAR(255) NOT NULL,
                        nickname VARCHAR(255) NOT NULL,
+                       name VARCHAR(255) NOT NULL,
+                       username VARCHAR(255) NOT NULL UNIQUE,
+                       reset_token VARCHAR(255),
+                       reset_token_expiry DATETIME,
+                       email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+                       email_verification_code VARCHAR(10),
+                       email_verification_code_expiry DATETIME,
                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
