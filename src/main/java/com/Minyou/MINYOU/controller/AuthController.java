@@ -1,8 +1,8 @@
 package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.dto.AuthResponse;
-import com.Minyou.MINYOU.dto.FindEmailRequest;
 import com.Minyou.MINYOU.dto.FindPasswordRequest;
+import com.Minyou.MINYOU.dto.FindUsernameRequest;
 import com.Minyou.MINYOU.dto.LoginRequest;
 import com.Minyou.MINYOU.dto.RegisterRequest;
 import com.Minyou.MINYOU.dto.ResetPasswordRequest;
@@ -130,12 +130,13 @@ public class AuthController {
     }
 
     /**
-     * 아이디 찾기 (이메일 확인)
+     * 아이디 찾기 (이메일 + 이름으로 확인)
+     * 일치하면 아이디 반환 및 비밀번호 재설정
      */
-    @PostMapping("/find-email")
-    public ResponseEntity<Map<String, Object>> findEmail(@RequestBody FindEmailRequest request) {
+    @PostMapping("/find-username")
+    public ResponseEntity<Map<String, Object>> findUsername(@RequestBody FindUsernameRequest request) {
         try {
-            Map<String, Object> response = authService.findEmail(request.getEmail());
+            Map<String, Object> response = authService.findUsername(request.getEmail(), request.getName());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
@@ -162,12 +163,36 @@ public class AuthController {
     }
 
     /**
-     * 비밀번호 재설정
+     * 비밀번호 찾기용 인증 코드 검증
+     */
+    @PostMapping("/verify-password-reset-code")
+    public ResponseEntity<Map<String, Object>> verifyPasswordResetCode(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String code = request.get("code");
+            if (email == null || code == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("message", "이메일과 인증 코드를 입력해주세요.");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            Map<String, Object> response = authService.verifyPasswordResetCode(email, code);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * 비밀번호 재설정 (인증 코드 검증 후)
      */
     @PostMapping("/reset-password")
     public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody ResetPasswordRequest request) {
         try {
-            authService.resetPassword(request.getToken(), request.getNewPassword());
+            authService.resetPassword(request.getEmail(), request.getCode(), request.getNewPassword());
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
