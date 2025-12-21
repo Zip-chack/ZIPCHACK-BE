@@ -13,12 +13,6 @@ SET character_set_results = utf8mb4;
 
 -- 기존 데이터 삭제 (테이블이 존재하는 경우에만)
 SET FOREIGN_KEY_CHECKS = 0;
-DELETE FROM favorites WHERE 1=1;
-DELETE FROM reviews WHERE 1=1;
-DELETE FROM listings WHERE 1=1;
-DELETE FROM buildings WHERE 1=1;
-DELETE FROM users WHERE 1=1;
-SET FOREIGN_KEY_CHECKS = 1;
 
 -- Users 샘플 데이터 (비밀번호: password123 - BCrypt 해시)
 INSERT INTO users (id, email, nickname, password, created_at) VALUES

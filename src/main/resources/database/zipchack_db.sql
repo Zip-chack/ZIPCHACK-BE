@@ -1,5 +1,6 @@
 -- MySQL 테이블 생성 및 목데이터 삽입 스크립트
 -- 주의: 외래키 제약조건을 고려하여 순서대로 실행해야 합니다.
+SET NAMES utf8mb4;
 
 CREATE DATABASE zip_chack
 DEFAULT CHARACTER SET utf8mb4
@@ -44,6 +45,7 @@ CREATE TABLE listings (
                           area_m2 DOUBLE,
                           floor INT NOT NULL,
                           image_url VARCHAR(255),
+                          status VARCHAR(20) DEFAULT 'AVAILABLE',
                           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                           building_id BIGINT NOT NULL,
                           user_id BIGINT NOT NULL,
