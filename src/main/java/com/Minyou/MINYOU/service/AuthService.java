@@ -73,6 +73,10 @@ public class AuthService {
                 .build();
     }
 
+    public boolean checkEmailExists(String email) {
+        return userRepository.existsByEmail(email);
+    }
+
     private String generateToken(User user) {
         // 간단한 토큰 생성 (실제로는 JWT를 사용해야 함)
         return UUID.randomUUID().toString() + "_" + user.getId();
