@@ -3,6 +3,7 @@ package com.Minyou.MINYOU.controller;
 import com.Minyou.MINYOU.dto.AuthResponse;
 import com.Minyou.MINYOU.dto.LoginRequest;
 import com.Minyou.MINYOU.dto.RegisterRequest;
+import com.Minyou.MINYOU.dto.UpdateUserRequest;
 import com.Minyou.MINYOU.dto.UserDto;
 import com.Minyou.MINYOU.service.AuthService;
 import lombok.RequiredArgsConstructor;
@@ -55,6 +56,19 @@ public class AuthController {
         response.put("exists", exists);
         response.put("message", exists ? "이미 사용 중인 이메일입니다." : "사용 가능한 이메일입니다.");
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserDto> updateUser(
+            @RequestBody UpdateUserRequest request,
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            Long userId = extractUserIdFromToken(token);
+            UserDto updatedUser = authService.updateUser(userId, request);
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     private Long extractUserIdFromToken(String token) {
