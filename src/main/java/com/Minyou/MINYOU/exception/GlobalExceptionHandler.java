@@ -44,7 +44,14 @@ public class GlobalExceptionHandler {
         log.error("런타임 예외 발생: {}", ex.getMessage(), ex);
         Map<String, String> errorResponse = new HashMap<>();
         errorResponse.put("error", ex.getMessage());
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        errorResponse.put("message", ex.getMessage()); // 프론트엔드 호환성을 위해 message 필드도 추가
+        // 인증 관련 에러는 BAD_REQUEST로 처리
+        HttpStatus status = ex.getMessage() != null && 
+            (ex.getMessage().contains("이메일") || ex.getMessage().contains("비밀번호") || 
+             ex.getMessage().contains("로그인") || ex.getMessage().contains("존재"))
+            ? HttpStatus.BAD_REQUEST 
+            : HttpStatus.INTERNAL_SERVER_ERROR;
+        return new ResponseEntity<>(errorResponse, status);
     }
 
     @ExceptionHandler(S3Exception.class)
