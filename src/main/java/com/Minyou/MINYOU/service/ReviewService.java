@@ -1,5 +1,7 @@
 package com.Minyou.MINYOU.service;
 
+import com.Minyou.MINYOU.dto.BuildingDto;
+import com.Minyou.MINYOU.dto.ListingDto;
 import com.Minyou.MINYOU.dto.ReviewDto;
 import com.Minyou.MINYOU.dto.UserDto;
 import com.Minyou.MINYOU.entity.Building;
@@ -117,7 +119,7 @@ public class ReviewService {
     }
 
     private ReviewDto convertToDto(Review review) {
-        return ReviewDto.builder()
+        ReviewDto.ReviewDtoBuilder builder = ReviewDto.builder()
                 .id(review.getId())
                 .title(review.getTitle())
                 .content(review.getContent())
@@ -130,17 +132,81 @@ public class ReviewService {
                         .id(review.getUser().getId())
                         .email(review.getUser().getEmail())
                         .nickname(review.getUser().getNickname())
-                        .build())
-                .build();
+                        .build());
+
+        // Listing 정보 추가 (Building 정보 포함)
+        if (review.getListing() != null) {
+            Listing listing = review.getListing();
+            ListingDto.ListingDtoBuilder listingBuilder = ListingDto.builder()
+                    .id(listing.getId())
+                    .title(listing.getTitle());
+            
+            // Listing의 Building 정보 추가
+            Building listingBuilding = listing.getBuilding();
+            if (listingBuilding != null) {
+                BuildingDto buildingDto = BuildingDto.builder()
+                        .id(listingBuilding.getId())
+                        .name(listingBuilding.getName())
+                        .roadAddress(listingBuilding.getRoadAddress())
+                        .build();
+                listingBuilder.building(buildingDto);
+                System.out.println("  [DTO 변환] Listing의 Building 매핑 완료: " + buildingDto.getId() + " - " + buildingDto.getName());
+            } else {
+                System.out.println("  [DTO 변환] Listing의 Building이 null입니다.");
+            }
+            
+            ListingDto listingDto = listingBuilder.build();
+            builder.listing(listingDto);
+            System.out.println("  [DTO 변환] Listing 매핑 완료: " + listingDto.getId() + " - " + listingDto.getTitle());
+        } else {
+            System.out.println("  [DTO 변환] Review의 Listing이 null입니다.");
+        }
+
+        // Building 정보 추가
+        if (review.getBuilding() != null) {
+            Building building = review.getBuilding();
+            BuildingDto buildingDto = BuildingDto.builder()
+                    .id(building.getId())
+                    .name(building.getName())
+                    .roadAddress(building.getRoadAddress())
+                    .build();
+            builder.building(buildingDto);
+            System.out.println("  [DTO 변환] Building 매핑 완료: " + buildingDto.getId() + " - " + buildingDto.getName());
+        } else {
+            System.out.println("  [DTO 변환] Review의 Building이 null입니다.");
+        }
+
+        return builder.build();
     }
 
     /**
      * 사용자 ID로 리뷰 목록 조회
      */
     public List<ReviewDto> getUserReviews(Long userId) {
-        return reviewRepository.findByUserId(userId).stream()
+        List<Review> reviews = reviewRepository.findByUserIdWithDetails(userId);
+        System.out.println("=== 사용자 " + userId + "의 리뷰 조회 ===");
+        System.out.println("리뷰 개수: " + reviews.size());
+        
+        for (Review review : reviews) {
+            System.out.println("리뷰 ID: " + review.getId());
+            System.out.println("  - Listing: " + (review.getListing() != null ? review.getListing().getId() + " (" + review.getListing().getTitle() + ")" : "null"));
+            System.out.println("  - Building: " + (review.getBuilding() != null ? review.getBuilding().getId() + " (" + review.getBuilding().getName() + ")" : "null"));
+            if (review.getListing() != null && review.getListing().getBuilding() != null) {
+                System.out.println("  - Listing의 Building: " + review.getListing().getBuilding().getId() + " (" + review.getListing().getBuilding().getName() + ")");
+            }
+        }
+        
+        List<ReviewDto> dtos = reviews.stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+        
+        for (ReviewDto dto : dtos) {
+            System.out.println("DTO 리뷰 ID: " + dto.getId());
+            System.out.println("  - Listing DTO: " + (dto.getListing() != null ? dto.getListing().getId() + " (" + dto.getListing().getTitle() + ")" : "null"));
+            System.out.println("  - Building DTO: " + (dto.getBuilding() != null ? dto.getBuilding().getId() + " (" + dto.getBuilding().getName() + ")" : "null"));
+        }
+        
+        return dtos;
     }
 }
 

@@ -2,7 +2,6 @@ package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.dto.AuthResponse;
 import com.Minyou.MINYOU.dto.FindPasswordRequest;
-import com.Minyou.MINYOU.dto.FindUsernameRequest;
 import com.Minyou.MINYOU.dto.LoginRequest;
 import com.Minyou.MINYOU.dto.RegisterRequest;
 import com.Minyou.MINYOU.dto.ResetPasswordRequest;
@@ -129,22 +128,6 @@ public class AuthController {
         }
     }
 
-    /**
-     * 아이디 찾기 (이메일 + 이름으로 확인)
-     * 일치하면 아이디 반환 및 비밀번호 재설정
-     */
-    @PostMapping("/find-username")
-    public ResponseEntity<Map<String, Object>> findUsername(@RequestBody FindUsernameRequest request) {
-        try {
-            Map<String, Object> response = authService.findUsername(request.getEmail(), request.getName());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("found", false);
-            errorResponse.put("message", e.getMessage());
-            return ResponseEntity.badRequest().body(errorResponse);
-        }
-    }
 
     /**
      * 비밀번호 찾기 - 재설정 토큰 요청

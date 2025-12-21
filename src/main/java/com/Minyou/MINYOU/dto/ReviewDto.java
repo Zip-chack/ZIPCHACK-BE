@@ -21,5 +21,7 @@ public class ReviewDto {
     private Double ratingFacility;
     private LocalDateTime createdAt;
     private UserDto user;
+    private ListingDto listing;
+    private BuildingDto building;
 }
 

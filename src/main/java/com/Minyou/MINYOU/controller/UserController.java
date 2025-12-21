@@ -129,8 +129,16 @@ public class UserController {
         try {
             Long userId = extractUserIdFromToken(token);
             List<ReviewDto> reviews = reviewService.getUserReviews(userId);
+            log.info("사용자 {}의 리뷰 목록 조회: {}개", userId, reviews.size());
+            for (ReviewDto review : reviews) {
+                log.info("리뷰 ID: {}, Listing: {}, Building: {}", 
+                    review.getId(), 
+                    review.getListing() != null ? review.getListing().getId() : "null",
+                    review.getBuilding() != null ? review.getBuilding().getId() : "null");
+            }
             return ResponseEntity.ok(reviews);
         } catch (Exception e) {
+            log.error("리뷰 목록 조회 실패", e);
             return ResponseEntity.badRequest().build();
         }
     }
