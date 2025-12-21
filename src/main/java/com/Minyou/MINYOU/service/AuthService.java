@@ -134,11 +134,24 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다."));
+        // 이메일 또는 아이디로 사용자 찾기
+        User user = null;
+        java.util.Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
+        if (userOpt.isPresent()) {
+            user = userOpt.get();
+        } else {
+            userOpt = userRepository.findByUsername(request.getEmail());
+            if (userOpt.isPresent()) {
+                user = userOpt.get();
+            }
+        }
+        
+        if (user == null) {
+            throw new RuntimeException("아이디(이메일) 또는 비밀번호가 올바르지 않습니다.");
+        }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.");
+            throw new RuntimeException("아이디(이메일) 또는 비밀번호가 올바르지 않습니다.");
         }
 
         String token = generateToken(user);
@@ -214,53 +227,105 @@ public class AuthService {
     }
 
     /**
-     * 이메일로 아이디 찾기 (이메일이 곧 아이디이므로 이메일 존재 여부 확인)
+     * 아이디 찾기 (이메일 + 이름으로 확인)
+     * 일치하면 아이디만 반환
      */
-    public Map<String, Object> findEmail(String email) {
-        boolean exists = userRepository.existsByEmail(email);
+    public Map<String, Object> findUsername(String email, String name) {
+        User user = userRepository.findByEmail(email)
+                .orElse(null);
+
         Map<String, Object> response = new HashMap<>();
-        if (exists) {
-            response.put("found", true);
-            response.put("email", email);
-            response.put("message", "등록된 이메일입니다.");
-        } else {
+        
+        if (user == null) {
             response.put("found", false);
             response.put("message", "등록되지 않은 이메일입니다.");
+            return response;
         }
+
+        // 이름 확인
+        if (!name.equals(user.getName())) {
+            response.put("found", false);
+            response.put("message", "이메일과 이름이 일치하지 않습니다.");
+            return response;
+        }
+
+        // 일치하는 경우: 아이디만 반환
+        response.put("found", true);
+        response.put("username", user.getUsername());
+        response.put("message", "아이디를 찾았습니다.");
+        
         return response;
     }
 
     /**
-     * 비밀번호 찾기 - 재설정 토큰 생성
+     * 비밀번호 찾기 - 인증 코드 전송
      */
     public Map<String, Object> requestPasswordReset(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
 
-        // 재설정 토큰 생성 (30분 유효)
-        String resetToken = UUID.randomUUID().toString();
-        user.setResetToken(resetToken);
-        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(30));
+        // 6자리 랜덤 인증 코드 생성
+        String verificationCode = String.format("%06d", (int)(Math.random() * 1000000));
+
+        // 인증 코드 저장 (10분 유효)
+        user.setEmailVerificationCode(verificationCode);
+        user.setEmailVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10));
         userRepository.save(user);
+
+        // 이메일로 인증 코드 전송
+        emailService.sendPasswordResetCode(email, verificationCode);
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
-        response.put("token", resetToken);
-        response.put("message", "비밀번호 재설정 토큰이 생성되었습니다.");
-        // 실제로는 이메일로 토큰을 전송해야 하지만, 여기서는 토큰을 반환
+        response.put("message", "인증 코드가 전송되었습니다. 이메일을 확인해주세요.");
         return response;
     }
 
     /**
-     * 비밀번호 재설정
+     * 비밀번호 찾기용 인증 코드 검증
      */
-    public void resetPassword(String token, String newPassword) {
-        User user = userRepository.findByResetToken(token)
-                .orElseThrow(() -> new RuntimeException("유효하지 않은 토큰입니다."));
+    public Map<String, Object> verifyPasswordResetCode(String email, String code) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
 
-        // 토큰 만료 확인
-        if (user.getResetTokenExpiry() == null || user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("만료된 토큰입니다.");
+        Map<String, Object> response = new HashMap<>();
+
+        // 인증 코드 확인
+        if (user.getEmailVerificationCode() == null || !user.getEmailVerificationCode().equals(code)) {
+            response.put("success", false);
+            response.put("message", "인증 코드가 일치하지 않습니다.");
+            return response;
+        }
+
+        // 인증 코드 만료 확인
+        if (user.getEmailVerificationCodeExpiry() == null || 
+            user.getEmailVerificationCodeExpiry().isBefore(LocalDateTime.now())) {
+            response.put("success", false);
+            response.put("message", "만료된 인증 코드입니다.");
+            return response;
+        }
+
+        response.put("success", true);
+        response.put("message", "인증이 완료되었습니다.");
+        return response;
+    }
+
+    /**
+     * 비밀번호 재설정 (인증 코드 검증 후)
+     */
+    public void resetPassword(String email, String code, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
+
+        // 인증 코드 확인
+        if (user.getEmailVerificationCode() == null || !user.getEmailVerificationCode().equals(code)) {
+            throw new RuntimeException("인증 코드가 일치하지 않습니다.");
+        }
+
+        // 인증 코드 만료 확인
+        if (user.getEmailVerificationCodeExpiry() == null || 
+            user.getEmailVerificationCodeExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("만료된 인증 코드입니다.");
         }
 
         // 새 비밀번호 유효성 검사
@@ -274,10 +339,10 @@ public class AuthService {
             throw new RuntimeException("비밀번호는 영문과 숫자를 포함해야 합니다.");
         }
 
-        // 비밀번호 변경 및 토큰 초기화
+        // 비밀번호 변경 및 인증 코드 초기화
         user.setPassword(passwordEncoder.encode(newPassword.trim()));
-        user.setResetToken(null);
-        user.setResetTokenExpiry(null);
+        user.setEmailVerificationCode(null);
+        user.setEmailVerificationCodeExpiry(null);
         userRepository.save(user);
     }
 
