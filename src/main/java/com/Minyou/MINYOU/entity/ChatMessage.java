@@ -25,10 +25,34 @@ public class ChatMessage extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
+    @Column(name = "read_by_owner", nullable = false)
+    private Boolean readByOwner = false;
+
+    @Column(name = "read_by_buyer", nullable = false)
+    private Boolean readByBuyer = false;
+
     @Builder
-    public ChatMessage(ChatRoom chatRoom, Long senderId, String content) {
+    public ChatMessage(ChatRoom chatRoom, Long senderId, String content, Boolean readByOwner, Boolean readByBuyer) {
         this.chatRoom = chatRoom;
         this.senderId = senderId;
         this.content = content;
+        this.readByOwner = readByOwner != null ? readByOwner : false;
+        this.readByBuyer = readByBuyer != null ? readByBuyer : false;
+    }
+
+    public void markAsReadByOwner() {
+        this.readByOwner = true;
+    }
+
+    public void markAsReadByBuyer() {
+        this.readByBuyer = true;
+    }
+
+    public boolean isReadByUser(Long userId, Long ownerId) {
+        if (userId.equals(ownerId)) {
+            return readByOwner;
+        } else {
+            return readByBuyer;
+        }
     }
 }

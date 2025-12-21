@@ -157,12 +157,14 @@ CREATE TABLE chat_room (
                            CONSTRAINT uk_chat_room_listing_buyer UNIQUE (listing_id, buyer_id)
 );
 
--- 8. chat_room 테이블 데이터 삽입 (채팅 메시지)
+-- 8. chat_message 테이블 생성 (채팅 메시지)
 CREATE TABLE chat_message (
                               id BIGINT AUTO_INCREMENT PRIMARY KEY,
                               room_id BIGINT NOT NULL,
                               sender_id BIGINT NOT NULL,
                               content TEXT NOT NULL,
+                              read_by_owner BOOLEAN NOT NULL DEFAULT FALSE,
+                              read_by_buyer BOOLEAN NOT NULL DEFAULT FALSE,
                               created_at DATETIME(6) NOT NULL,
                               updated_at DATETIME(6) NOT NULL, -- Inherited from BaseTimeEntity, but for DB schema just added
                               CONSTRAINT fk_chat_message_room FOREIGN KEY (room_id) REFERENCES chat_room(id)

@@ -133,5 +133,14 @@ public class ReviewService {
                         .build())
                 .build();
     }
+
+    /**
+     * 사용자 ID로 리뷰 목록 조회
+     */
+    public List<ReviewDto> getUserReviews(Long userId) {
+        return reviewRepository.findByUserId(userId).stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
 }
 

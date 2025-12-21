@@ -264,4 +264,14 @@ public class ListingService {
                 .map(listingDtoMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * 사용자 ID로 매물 목록 조회
+     */
+    public List<ListingDto> getUserListings(Long userId) {
+        List<Listing> listings = listingRepository.findByUserId(userId);
+        return listings.stream()
+                .map(listingDtoMapper::toDto)
+                .collect(Collectors.toList());
+    }
 }

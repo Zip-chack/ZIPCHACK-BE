@@ -91,18 +91,37 @@ public class ChatService {
 
     /**
      * 특정 채팅방의 전체 메시지를 시간순으로 조회한다.
+     * 채팅방 입장 시 모든 메시지를 읽음 처리한다.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<ChatMessageResponse> getChatMessages(Long roomId, Long userId) {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
         if (!room.getOwnerId().equals(userId) && !room.getBuyerId().equals(userId)) {
             throw new SecurityException("You do not have permission to view this chat.");
         }
-        return chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId)
-                .stream()
+        
+        // 채팅방 입장 시 모든 메시지를 읽음 처리
+        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId);
+        messages.forEach(message -> {
+            if (room.getOwnerId().equals(userId) && !message.getReadByOwner()) {
+                message.markAsReadByOwner();
+            } else if (room.getBuyerId().equals(userId) && !message.getReadByBuyer()) {
+                message.markAsReadByBuyer();
+            }
+        });
+        
+        return messages.stream()
                 .map(ChatMessageResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 사용자의 읽지 않은 메시지 개수 조회
+     */
+    @Transactional(readOnly = true)
+    public long getUnreadMessageCount(Long userId) {
+        return chatMessageRepository.countUnreadMessagesByUserId(userId);
     }
 
     /**
@@ -141,10 +160,15 @@ public class ChatService {
             }
         }
 
+        // 새 메시지는 기본적으로 읽지 않은 상태로 생성
+        // 보낸 사람의 메시지는 즉시 읽음 처리 (자신이 보낸 메시지는 읽은 것으로 간주)
+        boolean isOwner = room.getOwnerId().equals(dto.getSenderId());
         ChatMessage message = ChatMessage.builder()
                 .chatRoom(room)
                 .senderId(dto.getSenderId())
                 .content(dto.getContent())
+                .readByOwner(isOwner) // 보낸 사람이 owner면 owner는 읽음, buyer는 읽지 않음
+                .readByBuyer(!isOwner) // 보낸 사람이 buyer면 buyer는 읽음, owner는 읽지 않음
                 .build();
         
         return chatMessageRepository.save(message);
