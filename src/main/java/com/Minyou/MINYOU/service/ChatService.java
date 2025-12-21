@@ -46,6 +46,11 @@ public class ChatService {
                 .orElseGet(() -> {
                     Listing listing = listingRepository.findById(listingId)
                             .orElseThrow(() -> new IllegalArgumentException("Listing not found"));
+                    
+                    if (listing.getStatus() == ListingStatus.COMPLETED) {
+                        throw new IllegalStateException("이미 거래가 완료된 매물입니다.");
+                    }
+
                     if (listing.getUser().getId().equals(loginUserId)) {
                         throw new IllegalArgumentException("Owner cannot start a chat with themselves.");
                     }
@@ -157,6 +162,13 @@ public class ChatService {
         if (room.getStatus() == ChatRoomStatus.WAITING) {
             if (chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId).isEmpty()) {
                 room.updateStatus(ChatRoomStatus.NEGOTIATING);
+                // 매물 상태를 예약중으로 변경
+                listingRepository.findById(room.getListingId()).ifPresent(l -> {
+                    if (l.getStatus() == ListingStatus.AVAILABLE) {
+                        l.setStatus(ListingStatus.RESERVED);
+                        listingRepository.saveAndFlush(l);
+                    }
+                });
             }
         }
 
@@ -182,19 +194,25 @@ public class ChatService {
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
 
-        if (!room.getOwnerId().equals(userId) && !room.getBuyerId().equals(userId)) {
-            throw new SecurityException("You do not have permission to complete this chat.");
+        // 매물 등록자(Owner)만 거래 완료 가능
+        if (!room.getOwnerId().equals(userId)) {
+            throw new SecurityException("오직 매물 등록자만 거래를 완료할 수 있습니다.");
         }
 
         if (room.getStatus() == ChatRoomStatus.COMPLETED) {
+            System.out.println("Chat room " + roomId + " is already COMPLETED.");
             return;
         }
 
+        System.out.println("Updating chat room " + roomId + " to COMPLETED.");
         room.updateStatus(ChatRoomStatus.COMPLETED);
+        chatRoomRepository.saveAndFlush(room);
 
         // 해당 채팅방과 연결된 매물의 상태도 '거래 완료'로 변경
         listingRepository.findById(room.getListingId()).ifPresent(listing -> {
+            System.out.println("Updating listing " + listing.getId() + " to COMPLETED.");
             listing.setStatus(ListingStatus.COMPLETED);
+            listingRepository.saveAndFlush(listing);
         });
 
         sendSystemMessage(room, "거래가 완료되었습니다. 이 채팅방은 종료됩니다.");
