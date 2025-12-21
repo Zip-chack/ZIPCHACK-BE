@@ -92,4 +92,10 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
      * 사용자 ID로 매물 조회
      */
     List<Listing> findByUserId(Long userId);
+
+    /**
+     * 사용자 ID로 매물 조회 (User와 Building 정보를 함께 fetch)
+     */
+    @Query("SELECT l FROM Listing l JOIN FETCH l.user JOIN FETCH l.building WHERE l.user.id = :userId")
+    List<Listing> findByUserIdWithDetails(@Param("userId") Long userId);
 }
