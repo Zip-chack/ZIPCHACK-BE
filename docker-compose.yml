@@ -32,6 +32,7 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/zip_chack?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
       DB_USERNAME: ${DB_USERNAME:-root}
       DB_PASSWORD: ${DB_PASSWORD:-rootpassword}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://172.31.11.244:8001}
     volumes:
       - ./.env:/app/.env:ro
     ports:

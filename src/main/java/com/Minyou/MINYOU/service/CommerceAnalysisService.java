@@ -7,7 +7,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +34,9 @@ public class CommerceAnalysisService {
         this.webClient = WebClient.builder()
                 .baseUrl(AI_SERVICE_URL)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .codecs(configurer -> configurer
+                        .defaultCodecs()
+                        .maxInMemorySize(10 * 1024 * 1024)) // 10MB
                 .build();
         this.objectMapper = new ObjectMapper();
     }
@@ -69,6 +74,9 @@ public class CommerceAnalysisService {
                     .bodyValue(requestBody)
                     .retrieve()
                     .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(180)) // 3분 타임아웃
+                    .retryWhen(Retry.backoff(2, Duration.ofSeconds(2))
+                            .filter(throwable -> throwable instanceof java.util.concurrent.TimeoutException))
                     .block();
             
             log.info("Python AI 서버 응답 수신 완료");
