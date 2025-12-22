@@ -11,7 +11,7 @@ import java.util.Set;
 
 @Repository
 public interface ListingRepository extends JpaRepository<Listing, Long> {
-    @Query("SELECT l FROM Listing l WHERE l.building.roadAddress LIKE %:query% OR l.title LIKE %:query%")
+    @Query("SELECT l FROM Listing l JOIN l.building b WHERE b.roadAddress LIKE :query OR l.title LIKE :query OR b.name LIKE :query")
     List<Listing> searchByQuery(@Param("query") String query);
 
     List<Listing> findByRoomType(String roomType);
@@ -46,7 +46,7 @@ public interface ListingRepository extends JpaRepository<Listing, Long> {
         "FROM listings l " +
         "LEFT JOIN buildings b ON l.building_id = b.id " +
         "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-        "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') " +
+        "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') OR b.name LIKE CONCAT('%', :query, '%') " +
         "ORDER BY l.created_at DESC", 
         nativeQuery = true)
     List<Object[]> searchByQueryWithFavoriteStatus(@Param("query") String query, @Param("userId") Long userId);
