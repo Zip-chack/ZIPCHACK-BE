@@ -7,6 +7,10 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import reactor.core.publisher.Mono;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -17,7 +21,8 @@ import java.util.Map;
 @Service
 @Slf4j
 public class PublicDataService {
-    private static final String PUBLIC_DATA_BASE_URL = "http://openapi.molit.go.kr";
+    // 보안 프로그램 간섭을 피하기 위해 apis.data.go.kr 표준 도메인 사용
+    private static final String PUBLIC_DATA_BASE_URL = "http://apis.data.go.kr";
     private final WebClient webClient;
     private final KakaoMapService kakaoMapService;
     private String apiKey;
@@ -27,9 +32,7 @@ public class PublicDataService {
         Dotenv dotenv = Dotenv.load();
         this.apiKey = dotenv.get("KDATA_KEY");
         if (this.apiKey == null || this.apiKey.isEmpty()) {
-            log.error("KDATA_KEY가 설정되지 않았습니다. 공공데이터 API 기능을 사용할 수 없습니다.");
-        } else {
-            log.info("공공데이터 API 키가 설정되었습니다.");
+            log.error("KDATA_KEY가 설정되지 않았습니다.");
         }
         
         this.webClient = WebClient.builder()
@@ -40,34 +43,38 @@ public class PublicDataService {
 
     /**
      * 아파트 전월세 실거래가 조회
-     * @param lawdCd 법정동코드 (예: 11680 = 서울시 강남구)
-     * @param dealYmd 거래년월 (예: 202401)
      */
     public List<Map<String, Object>> getApartmentRentData(String lawdCd, String dealYmd) {
         if (apiKey == null || apiKey.isEmpty()) {
-            log.error("KDATA_KEY가 설정되지 않아 아파트 전월세 데이터를 조회할 수 없습니다.");
-            throw new RuntimeException("공공데이터 API 키가 설정되지 않았습니다. KDATA_KEY 환경변수를 설정해주세요.");
+            throw new RuntimeException("공공데이터 API 키가 없습니다.");
         }
 
         try {
-            // API 호출 (XML 형식으로 제공되는 경우가 많음)
+            // 표준 게이트웨이 주소로 요청 구성
+            String path = "/1613000/RTMSOBJSvc/getRTMSDataSvcAptRent";
+            
+            String url = String.format(
+                "%s%s?serviceKey=%s&LAWD_CD=%s&DEAL_YMD=%s&numOfRows=1000&pageNo=1",
+                PUBLIC_DATA_BASE_URL, path, apiKey, lawdCd, dealYmd
+            );
+            
+            URI uri = new URI(url);
+            log.info("공공데이터 호출 주소: {}", url.replace(apiKey, "REDACTED"));
+
             String response = webClient.get()
-                    .uri(uriBuilder -> uriBuilder
-                            .path("/OpenAPI_ToolInstallPackage/service/rest/RTMSOBJSvc/getRTMSDataSvcAptRent")
-                            .queryParam("serviceKey", apiKey)
-                            .queryParam("LAWD_CD", lawdCd)
-                            .queryParam("DEAL_YMD", dealYmd)
-                            .queryParam("numOfRows", "1000")
-                            .queryParam("pageNo", "1")
-                            .build())
+                    .uri(uri)
                     .retrieve()
+                    .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(), 
+                        clientResponse -> clientResponse.bodyToMono(String.class)
+                            .flatMap(errorBody -> Mono.error(new RuntimeException("API 에러: " + errorBody)))
+                    )
                     .bodyToMono(String.class)
                     .block();
 
             return parseApartmentRentXml(response);
         } catch (Exception e) {
-            log.error("아파트 전월세 데이터 조회 실패: {}", e.getMessage(), e);
-            throw new RuntimeException("아파트 전월세 데이터 조회 중 오류가 발생했습니다: " + e.getMessage());
+            log.error("조회 실패: {}", e.getMessage());
+            throw new RuntimeException("데이터 조회 실패: " + e.getMessage());
         }
     }
 

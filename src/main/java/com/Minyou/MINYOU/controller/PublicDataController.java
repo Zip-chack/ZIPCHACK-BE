@@ -2,6 +2,7 @@ package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.service.PublicDataService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,6 +12,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/public-data")
 @RequiredArgsConstructor
+@Slf4j
 public class PublicDataController {
     private final PublicDataService publicDataService;
 
@@ -31,7 +33,8 @@ public class PublicDataController {
                 results = publicDataService.getRecentApartmentRentData(lawdCd);
             }
             return ResponseEntity.ok(results);
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
+            log.error("실거래가 조회 중 오류 발생: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
