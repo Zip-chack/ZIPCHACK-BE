@@ -41,7 +41,9 @@ public class ListingService {
         // userId가 없는 경우 기존 방식 사용
         List<Listing> listings;
         if (search != null && !search.isEmpty()) {
-            listings = listingRepository.searchByQuery(search);
+            // 검색어에 % 추가하여 LIKE 검색 지원
+            String searchQuery = "%" + search + "%";
+            listings = listingRepository.searchByQuery(searchQuery);
         } else if (roomType != null && !roomType.isEmpty()) {
             listings = listingRepository.findByRoomType(roomType);
         } else if (minPrice != null && maxPrice != null) {
@@ -80,7 +82,7 @@ public class ListingService {
                 "FROM listings l " +
                 "LEFT JOIN buildings b ON l.building_id = b.id " +
                 "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') " +
+                "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') OR b.name LIKE CONCAT('%', :query, '%') " +
                 orderBy;
             query = entityManager.createNativeQuery(sql);
             query.setParameter("query", search);
