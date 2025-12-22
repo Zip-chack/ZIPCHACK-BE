@@ -61,7 +61,7 @@ public class SecurityConfig {
                 // 찜 목록 조회는 인증 필요
                 .requestMatchers(HttpMethod.GET, "/api/listings/favorites").authenticated()
                 // 찜하기 토글은 인증 필요
-                .requestMatchers(HttpMethod.POST, "/api/listings/**/favorite").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/listings/*/favorite").authenticated()
                 // 나머지 API는 허용
                 .requestMatchers("/api/**").permitAll()
                 .anyRequest().permitAll()
