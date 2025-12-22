@@ -90,12 +90,12 @@ CREATE TABLE favorites (
 -- 데이터 삽입 시작
 -- 1. Users 테이블 데이터 삽입
 -- 비밀번호는 BCrypt로 암호화된 값입니다 (원본: "password123")
-INSERT INTO users (email, password, nickname, created_at) VALUES
-                                                              ('user1@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '김철수', NOW()),
-                                                              ('user2@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '박영희', NOW()),
-                                                              ('user3@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '이민수', NOW()),
-                                                              ('user4@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '정수진', NOW()),
-                                                              ('user5@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '최동현', NOW());
+INSERT INTO users (email, password, nickname, name, username, created_at) VALUES
+                                                              ('user1@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '김철수', '김철수', 'user1', NOW()),
+                                                              ('user2@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '박영희', '박영희', 'user2', NOW()),
+                                                              ('user3@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '이민수', '이민수', 'user3', NOW()),
+                                                              ('user4@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '정수진', '정수진', 'user4', NOW()),
+                                                              ('user5@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '최동현', '최동현', 'user5', NOW());
 
 -- 2. Buildings 테이블 데이터 삽입
 INSERT INTO buildings (name, road_address, lat, lng, built_year) VALUES
