@@ -2,6 +2,8 @@ package com.Minyou.MINYOU.service;
 
 import com.Minyou.MINYOU.dto.*;
 import com.Minyou.MINYOU.entity.User;
+import com.Minyou.MINYOU.repository.ChatMessageRepository;
+import com.Minyou.MINYOU.repository.ChatRoomRepository;
 import com.Minyou.MINYOU.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,8 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final ChatRoomRepository chatRoomRepository;
+    private final ChatMessageRepository chatMessageRepository;
 
     /**
      * 이메일 인증 코드 전송
@@ -58,8 +62,19 @@ public class AuthService {
             userRepository.save(existingUser);
         }
 
-        // 이메일 전송
-        emailService.sendVerificationCode(email, verificationCode);
+        // 이메일 전송 (실패해도 인증 코드는 저장됨)
+        try {
+            emailService.sendVerificationCode(email, verificationCode);
+        } catch (Exception e) {
+            // 이메일 전송 실패 시에도 인증 코드는 저장되어 있으므로, 개발 모드에서는 콘솔에 출력
+            System.out.println("========================================");
+            System.out.println("이메일 인증 코드 (개발용):");
+            System.out.println("이메일: " + email);
+            System.out.println("인증 코드: " + verificationCode);
+            System.out.println("========================================");
+            // 개발 모드에서는 예외를 던지지 않고 계속 진행
+            // throw new RuntimeException("이메일 전송에 실패했습니다. 개발 모드에서는 콘솔을 확인하세요.");
+        }
     }
 
     /**
@@ -272,13 +287,27 @@ public class AuthService {
         user.setEmailVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10));
         userRepository.save(user);
 
-        // 이메일로 인증 코드 전송
-        emailService.sendPasswordResetCode(email, verificationCode);
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "인증 코드가 전송되었습니다. 이메일을 확인해주세요.");
-        return response;
+        // 이메일로 인증 코드 전송 (실패해도 인증 코드는 저장됨)
+        try {
+            emailService.sendPasswordResetCode(email, verificationCode);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "인증 코드가 전송되었습니다. 이메일을 확인해주세요.");
+            return response;
+        } catch (Exception e) {
+            // 이메일 전송 실패 시에도 인증 코드는 저장되어 있으므로, 개발 모드에서는 콘솔에 출력
+            System.out.println("========================================");
+            System.out.println("비밀번호 재설정 인증 코드 (개발용):");
+            System.out.println("이메일: " + email);
+            System.out.println("인증 코드: " + verificationCode);
+            System.out.println("========================================");
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "인증 코드가 생성되었습니다. (이메일 전송 실패 - 개발 모드에서는 콘솔을 확인하세요)");
+            response.put("devCode", verificationCode); // 개발 모드에서만 사용
+            return response;
+        }
     }
 
     /**
@@ -344,6 +373,33 @@ public class AuthService {
         user.setEmailVerificationCode(null);
         user.setEmailVerificationCodeExpiry(null);
         userRepository.save(user);
+    }
+
+    /**
+     * 회원 탈퇴
+     */
+    @Transactional
+    public void deleteAccount(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        // 1. 사용자가 참여한 채팅방 찾기
+        var chatRooms = chatRoomRepository.findByOwnerIdOrBuyerId(userId, userId);
+        
+        // 2. 각 채팅방의 메시지 삭제
+        for (var room : chatRooms) {
+            chatMessageRepository.deleteByChatRoomId(room.getId());
+        }
+        
+        // 3. 사용자가 참여한 채팅방 삭제
+        chatRoomRepository.deleteAll(chatRooms);
+        
+        // 4. 찜한 매물 관계 삭제 (ManyToMany)
+        user.getFavoriteListings().clear();
+        userRepository.save(user); // 관계 업데이트 저장
+        
+        // 5. 사용자 삭제 (CascadeType.ALL로 인해 Listings, Reviews도 자동 삭제됨)
+        userRepository.delete(user);
     }
 
     private String generateToken(User user) {

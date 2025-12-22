@@ -128,6 +128,29 @@ public class AuthController {
         }
     }
 
+    /**
+     * 아이디 찾기 (이메일 + 이름으로 확인)
+     */
+    @PostMapping("/find-username")
+    public ResponseEntity<Map<String, Object>> findUsername(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String name = request.get("name");
+            if (email == null || name == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("found", false);
+                errorResponse.put("message", "이메일과 이름을 입력해주세요.");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            Map<String, Object> response = authService.findUsername(email, name);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("found", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
 
     /**
      * 비밀번호 찾기 - 재설정 토큰 요청
@@ -179,6 +202,27 @@ public class AuthController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("message", "비밀번호가 성공적으로 변경되었습니다.");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
+    /**
+     * 회원 탈퇴
+     */
+    @DeleteMapping("/me")
+    public ResponseEntity<Map<String, Object>> deleteAccount(
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            Long userId = extractUserIdFromToken(token);
+            authService.deleteAccount(userId);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "회원 탈퇴가 완료되었습니다.");
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, Object> errorResponse = new HashMap<>();
