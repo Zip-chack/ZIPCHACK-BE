@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,9 +39,13 @@ public class Building {
 
     @OneToMany(mappedBy = "building", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Listing> listings = new ArrayList<>();
 
     @OneToMany(mappedBy = "building", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Review> reviews = new ArrayList<>();
 }

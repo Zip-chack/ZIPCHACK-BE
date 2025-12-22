@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -50,18 +52,24 @@ public class Listing {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id", nullable = false)
+    @ToString.Exclude
     private Building building;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @ToString.Exclude
     private User user;
 
     @OneToMany(mappedBy = "listing", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Review> reviews = new ArrayList<>();
 
     @ManyToMany(mappedBy = "favoriteListings")
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<User> favoritedBy = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)

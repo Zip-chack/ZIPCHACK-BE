@@ -62,6 +62,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/listings/favorites").authenticated()
                 // 찜하기 토글은 인증 필요
                 .requestMatchers(HttpMethod.POST, "/api/listings/*/favorite").authenticated()
+                // Swagger UI 관련 경로 허용
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 // 나머지 API는 허용
                 .requestMatchers("/api/**").permitAll()
                 .anyRequest().permitAll()

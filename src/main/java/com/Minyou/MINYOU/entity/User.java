@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -56,10 +58,14 @@ public class User extends BaseTimeEntity { // Extended BaseTimeEntity
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Listing> listings = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Review> reviews = new ArrayList<>();
 
     @ManyToMany
@@ -69,5 +75,7 @@ public class User extends BaseTimeEntity { // Extended BaseTimeEntity
             inverseJoinColumns = @JoinColumn(name = "listing_id")
     )
     @Builder.Default
+    @ToString.Exclude
+    @JsonIgnore
     private List<Listing> favoriteListings = new ArrayList<>();
 }
