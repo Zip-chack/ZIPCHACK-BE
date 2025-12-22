@@ -102,6 +102,25 @@ public class ListingController {
         }
     }
 
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ListingDto> updateListingStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> statusUpdate,
+            @RequestHeader(value = "Authorization", required = false) String token) {
+        try {
+            Long userId = extractUserIdFromToken(token);
+            String statusStr = statusUpdate.get("status");
+            com.Minyou.MINYOU.entity.ListingStatus status = com.Minyou.MINYOU.entity.ListingStatus.valueOf(statusStr);
+            
+            ListingDto listing = listingService.updateListingStatus(id, status, userId);
+            return ResponseEntity.ok(listing);
+        } catch (Exception e) {
+            System.err.println("상태 업데이트 실패: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteListing(
             @PathVariable Long id,

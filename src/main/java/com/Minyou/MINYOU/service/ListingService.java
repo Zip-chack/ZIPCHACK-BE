@@ -241,6 +241,20 @@ public class ListingService {
         listingRepository.delete(listing);
     }
 
+    @Transactional
+    public ListingDto updateListingStatus(Long id, com.Minyou.MINYOU.entity.ListingStatus status, Long userId) {
+        Listing listing = listingRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+
+        if (!listing.getUser().getId().equals(userId)) {
+            throw new RuntimeException("권한이 없습니다.");
+        }
+
+        listing.setStatus(status);
+        listing = listingRepository.save(listing);
+        return listingDtoMapper.toDto(listing);
+    }
+
     /**
      * Building ID로 매물 목록 조회
      */
