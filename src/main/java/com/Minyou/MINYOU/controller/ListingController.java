@@ -1,10 +1,13 @@
 package com.Minyou.MINYOU.controller;
 
 import com.Minyou.MINYOU.dto.ListingDto;
+import com.Minyou.MINYOU.security.UserPrincipal;
 import com.Minyou.MINYOU.service.FavoriteService;
 import com.Minyou.MINYOU.service.ListingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -66,14 +69,16 @@ public class ListingController {
 
     @PostMapping
     public ResponseEntity<?> createListing(
-            @RequestBody ListingDto listingDto,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            @RequestBody ListingDto listingDto) {
         try {
             System.out.println("매물 등록 요청 받음 - Building ID: " + 
                 (listingDto.getBuilding() != null ? listingDto.getBuilding().getId() : "null"));
             System.out.println("매물 등록 요청 받음 - Title: " + listingDto.getTitle());
             
-            Long userId = extractUserIdFromToken(token);
+            Long userId = getCurrentUserId();
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다."));
+            }
             System.out.println("매물 등록 - 사용자 ID: " + userId);
             
             ListingDto listing = listingService.createListing(listingDto, userId);
@@ -137,10 +142,12 @@ public class ListingController {
 
     @PostMapping("/{id}/favorite")
     public ResponseEntity<Map<String, Object>> toggleFavorite(
-            @PathVariable Long id,
-            @RequestHeader(value = "Authorization", required = false) String token) {
+            @PathVariable Long id) {
         try {
-            Long userId = extractUserIdFromToken(token);
+            Long userId = getCurrentUserId();
+            if (userId == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다."));
+            }
             boolean isFavorite = favoriteService.toggleFavorite(id, userId);
             return ResponseEntity.ok(Map.of("is_favorite", isFavorite));
         } catch (Exception e) {
@@ -149,14 +156,16 @@ public class ListingController {
     }
 
     @GetMapping("/favorites")
-    public ResponseEntity<List<ListingDto>> getFavorites(
-            @RequestHeader(value = "Authorization", required = false) String token) {
+    public ResponseEntity<?> getFavorites() {
+        Long userId = getCurrentUserId();
+        if (userId == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "로그인이 필요합니다."));
+        }
         try {
-            Long userId = extractUserIdFromToken(token);
             List<ListingDto> favorites = favoriteService.getFavorites(userId);
             return ResponseEntity.ok(favorites);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", "찜 목록 조회 중 오류가 발생했습니다."));
         }
     }
 
@@ -170,5 +179,14 @@ public class ListingController {
             throw new RuntimeException("Invalid token format");
         }
         return Long.parseLong(parts[parts.length - 1]);
+    }
+    
+    private Long getCurrentUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal) {
+            UserPrincipal userPrincipal = (UserPrincipal) authentication.getPrincipal();
+            return userPrincipal.getId();
+        }
+        return null;
     }
 }
