@@ -25,4 +25,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
            "AND ((cr.ownerId = :userId AND cm.readByOwner = false) OR " +
            "     (cr.buyerId = :userId AND cm.readByBuyer = false))")
     long countUnreadMessagesByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT COUNT(cm) FROM ChatMessage cm " +
+           "WHERE cm.chatRoom.id = :chatRoomId " +
+           "AND cm.senderId != :userId " +
+           "AND ((cm.chatRoom.ownerId = :userId AND cm.readByOwner = false) OR " +
+           "     (cm.chatRoom.buyerId = :userId AND cm.readByBuyer = false))")
+    long countUnreadMessagesByChatRoomIdAndUserId(@Param("chatRoomId") Long chatRoomId, @Param("userId") Long userId);
 }

@@ -84,12 +84,15 @@ public class ChatService {
             String lastMessage = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(room.getId())
                     .stream().reduce((first, second) -> second).map(ChatMessage::getContent).orElse("No messages yet.");
             
+            long unreadCount = chatMessageRepository.countUnreadMessagesByChatRoomIdAndUserId(room.getId(), loginUserId);
+
             return MyChatRoomResponse.builder()
                     .roomId(room.getId())
                     .targetUserId(targetUserId)
                     .targetUserNickname(targetUserNickname)
                     .lastMessage(lastMessage)
                     .status(room.getStatus())
+                    .unreadCount(unreadCount)
                     .build();
         }).collect(Collectors.toList());
     }
