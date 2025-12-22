@@ -15,10 +15,10 @@ SET character_set_results = utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Users 샘플 데이터 (비밀번호: password123 - BCrypt 해시)
-INSERT INTO users (id, email, nickname, password, created_at) VALUES
-(1, 'user1@example.com', '홍길동', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW()),
-(2, 'user2@example.com', '김철수', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW()),
-(3, 'user3@example.com', '이영희', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW())
+INSERT INTO users (id, email, nickname, password, name, username, email_verified, created_at) VALUES
+(1, 'user1@example.com', '홍길동', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '홍길동', 'honggildong', 1, NOW()),
+(2, 'user2@example.com', '김철수', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '김철수', 'kimcheolsu', 1, NOW()),
+(3, 'user3@example.com', '이영희', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '이영희', 'leeyounghee', 1, NOW())
 ON DUPLICATE KEY UPDATE email=email;
 
 -- Buildings 샘플 데이터 (서울 강남구, 홍대, 이태원 지역)

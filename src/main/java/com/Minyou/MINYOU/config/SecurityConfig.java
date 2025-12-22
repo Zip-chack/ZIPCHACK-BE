@@ -42,8 +42,12 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Origin은 http://localhost:5173 만 허용
-        configuration.setAllowedOrigins(List.of("http://localhost:5173"));
+        // 허용할 Origin 목록
+        configuration.setAllowedOrigins(List.of(
+            "http://localhost:5173",
+            "http://43.203.224.10:5173",
+            "http://54.180.9.86:5173"
+        ));
         // PATCH, OPTIONS 메서드를 반드시 허용
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         // 인증 헤더(Authorization) 허용
