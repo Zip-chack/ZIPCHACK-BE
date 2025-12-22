@@ -30,6 +30,27 @@ public class BuildingService {
         return convertToDto(building);
     }
 
+    @Transactional
+    public BuildingDto getOrCreateBuilding(Long id, BuildingDto buildingDto) {
+        return buildingRepository.findById(id)
+                .map(this::convertToDto)
+                .orElseGet(() -> {
+                    // 빌딩이 없으면 새로 생성 (지정된 ID 사용)
+                    buildingRepository.insertBuildingWithId(
+                            id,
+                            buildingDto.getName(),
+                            buildingDto.getRoadAddress(),
+                            buildingDto.getLat(),
+                            buildingDto.getLng(),
+                            buildingDto.getBuiltYear()
+                    );
+                    // 저장 후 다시 조회
+                    Building building = buildingRepository.findById(id)
+                            .orElseThrow(() -> new RuntimeException("건물 생성 후 조회 실패"));
+                    return convertToDto(building);
+                });
+    }
+
     public List<BuildingDto> searchBuildings(String query) {
         return buildingRepository.searchByQuery(query).stream()
                 .map(this::convertToDto)

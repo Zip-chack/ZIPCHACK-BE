@@ -24,11 +24,33 @@ public class BuildingController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<BuildingDto> getBuildingById(@PathVariable Long id) {
+    public ResponseEntity<BuildingDto> getBuildingById(
+            @PathVariable Long id,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String roadAddress,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Integer builtYear) {
         try {
             BuildingDto building = buildingService.getBuildingById(id);
             return ResponseEntity.ok(building);
         } catch (RuntimeException e) {
+            // 빌딩이 없고 건물 정보가 제공된 경우 새로 생성
+            if (name != null && roadAddress != null && lat != null && lng != null) {
+                try {
+                    BuildingDto buildingDto = BuildingDto.builder()
+                            .name(name)
+                            .roadAddress(roadAddress)
+                            .lat(lat)
+                            .lng(lng)
+                            .builtYear(builtYear)
+                            .build();
+                    BuildingDto createdBuilding = buildingService.getOrCreateBuilding(id, buildingDto);
+                    return ResponseEntity.ok(createdBuilding);
+                } catch (Exception createException) {
+                    return ResponseEntity.badRequest().build();
+                }
+            }
             return ResponseEntity.notFound().build();
         }
     }
