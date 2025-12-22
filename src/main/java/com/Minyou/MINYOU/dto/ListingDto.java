@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,6 +25,7 @@ public class ListingDto {
     private Integer reviewCount;
     private String status;
     private Boolean isFavorite;
+    private LocalDateTime createdAt;
     private BuildingDto building;
     private UserDto owner;
 }

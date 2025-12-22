@@ -16,7 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,10 +32,10 @@ public class ListingService {
     private final ListingDtoMapper listingDtoMapper;
     private final EntityManager entityManager;
 
-    public List<ListingDto> getAllListings(String roomType, Integer minPrice, Integer maxPrice, String search, Long userId) {
+    public List<ListingDto> getAllListings(String roomType, Integer minPrice, Integer maxPrice, String search, String sort, Long userId) {
         // 조인 쿼리를 사용하여 한 번의 쿼리로 매물과 찜 여부를 함께 가져옴
         if (userId != null) {
-            return getAllListingsWithFavorite(roomType, minPrice, maxPrice, search, userId);
+            return getAllListingsWithFavorite(roomType, minPrice, maxPrice, search, sort, userId);
         }
 
         // userId가 없는 경우 기존 방식 사용
@@ -47,21 +46,32 @@ public class ListingService {
             listings = listingRepository.findByRoomType(roomType);
         } else if (minPrice != null && maxPrice != null) {
             listings = listingRepository.findByMonthlyRentBetween(minPrice, maxPrice);
+        } else if (minPrice != null) {
+            // minPrice만 있는 경우 (100+ 케이스)
+            listings = listingRepository.findAll().stream()
+                    .filter(l -> l.getMonthlyRent() != null && l.getMonthlyRent() >= minPrice)
+                    .collect(Collectors.toList());
         } else {
             listings = listingRepository.findAll();
         }
 
-        return listings.stream()
+        // 정렬 적용
+        List<ListingDto> dtos = listings.stream()
                 .map(listingDtoMapper::toDto)
                 .collect(Collectors.toList());
+        
+        return applySorting(dtos, sort);
     }
 
     /**
      * 조인 쿼리를 사용하여 매물과 찜 여부를 한 번에 조회
      */
-    private List<ListingDto> getAllListingsWithFavorite(String roomType, Integer minPrice, Integer maxPrice, String search, Long userId) {
+    private List<ListingDto> getAllListingsWithFavorite(String roomType, Integer minPrice, Integer maxPrice, String search, String sort, Long userId) {
         String sql;
         Query query;
+        
+        // 정렬 조건 결정
+        String orderBy = getOrderByClause(sort);
 
         if (search != null && !search.isEmpty()) {
             sql = 
@@ -71,7 +81,7 @@ public class ListingService {
                 "LEFT JOIN buildings b ON l.building_id = b.id " +
                 "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
                 "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') " +
-                "ORDER BY l.created_at DESC";
+                orderBy;
             query = entityManager.createNativeQuery(sql);
             query.setParameter("query", search);
             query.setParameter("userId", userId);
@@ -82,7 +92,7 @@ public class ListingService {
                 "FROM listings l " +
                 "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
                 "WHERE l.room_type = :roomType " +
-                "ORDER BY l.created_at DESC";
+                orderBy;
             query = entityManager.createNativeQuery(sql);
             query.setParameter("roomType", roomType);
             query.setParameter("userId", userId);
@@ -93,10 +103,22 @@ public class ListingService {
                 "FROM listings l " +
                 "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
                 "WHERE l.monthly_rent BETWEEN :min AND :max " +
-                "ORDER BY l.created_at DESC";
+                orderBy;
             query = entityManager.createNativeQuery(sql);
             query.setParameter("min", minPrice);
             query.setParameter("max", maxPrice);
+            query.setParameter("userId", userId);
+        } else if (minPrice != null) {
+            // minPrice만 있는 경우 (100+ 케이스)
+            sql = 
+                "SELECT l.*, " +
+                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
+                "FROM listings l " +
+                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
+                "WHERE l.monthly_rent >= :min " +
+                orderBy;
+            query = entityManager.createNativeQuery(sql);
+            query.setParameter("min", minPrice);
             query.setParameter("userId", userId);
         } else {
             sql = 
@@ -104,7 +126,7 @@ public class ListingService {
                 "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
                 "FROM listings l " +
                 "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "ORDER BY l.created_at DESC";
+                orderBy;
             query = entityManager.createNativeQuery(sql);
             query.setParameter("userId", userId);
         }
@@ -161,7 +183,70 @@ public class ListingService {
                 userId, listingDtos.size(), 
                 listingDtos.stream().filter(ListingDto::getIsFavorite).count());
 
-        return listingDtos;
+        // 모든 정렬을 Java에서 재적용하여 순서 보장
+        return applySorting(listingDtos, sort);
+    }
+
+    /**
+     * 정렬 조건에 따른 ORDER BY 절 생성
+     */
+    private String getOrderByClause(String sort) {
+        if (sort == null || sort.isEmpty() || "latest".equals(sort)) {
+            return "ORDER BY l.created_at DESC";
+        } else if ("price_low".equals(sort)) {
+            return "ORDER BY l.monthly_rent ASC";
+        } else if ("price_high".equals(sort)) {
+            return "ORDER BY l.monthly_rent DESC";
+        } else if ("rating".equals(sort)) {
+            // 평점 정렬은 Java에서 처리 (리뷰 조인 필요)
+            return "ORDER BY l.created_at DESC";
+        } else {
+            return "ORDER BY l.created_at DESC";
+        }
+    }
+
+    /**
+     * 정렬 적용 (평점 정렬 등 Java에서 처리해야 하는 경우)
+     */
+    private List<ListingDto> applySorting(List<ListingDto> dtos, String sort) {
+        if (sort == null || sort.isEmpty() || "latest".equals(sort)) {
+            // 최신순: created_at 기준 내림차순
+            return dtos.stream()
+                    .sorted((a, b) -> {
+                        if (a.getCreatedAt() == null && b.getCreatedAt() == null) return 0;
+                        if (a.getCreatedAt() == null) return 1;
+                        if (b.getCreatedAt() == null) return -1;
+                        return b.getCreatedAt().compareTo(a.getCreatedAt());
+                    })
+                    .collect(Collectors.toList());
+        } else if ("price_low".equals(sort)) {
+            return dtos.stream()
+                    .sorted((a, b) -> {
+                        Integer priceA = a.getMonthlyRent() != null ? a.getMonthlyRent() : 0;
+                        Integer priceB = b.getMonthlyRent() != null ? b.getMonthlyRent() : 0;
+                        return priceA.compareTo(priceB);
+                    })
+                    .collect(Collectors.toList());
+        } else if ("price_high".equals(sort)) {
+            return dtos.stream()
+                    .sorted((a, b) -> {
+                        Integer priceA = a.getMonthlyRent() != null ? a.getMonthlyRent() : 0;
+                        Integer priceB = b.getMonthlyRent() != null ? b.getMonthlyRent() : 0;
+                        return priceB.compareTo(priceA);
+                    })
+                    .collect(Collectors.toList());
+        } else if ("rating".equals(sort)) {
+            // 평점 정렬 - 리뷰 평균 계산 필요
+            return dtos.stream()
+                    .sorted((a, b) -> {
+                        Double ratingA = a.getRating() != null ? a.getRating() : 0.0;
+                        Double ratingB = b.getRating() != null ? b.getRating() : 0.0;
+                        return ratingB.compareTo(ratingA);
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            return dtos;
+        }
     }
 
     public ListingDto getListingById(Long id, Long userId) {

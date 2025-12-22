@@ -59,6 +59,7 @@ public class ListingDtoMapper {
                 .rating(rating)
                 .reviewCount(listing.getReviews().size())
                 .isFavorite(isFavorite)
+                .createdAt(listing.getCreatedAt())
                 .building(BuildingDto.builder()
                         .id(listing.getBuilding().getId())
                         .name(listing.getBuilding().getName())

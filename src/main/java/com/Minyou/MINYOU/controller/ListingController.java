@@ -23,6 +23,7 @@ public class ListingController {
             @RequestParam(required = false) Integer minPrice,
             @RequestParam(required = false) Integer maxPrice,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sort,
             @RequestHeader(value = "Authorization", required = false) String token) {
         Long userId = null;
         try {
@@ -33,7 +34,7 @@ public class ListingController {
             System.out.println("매물 목록 조회 - 토큰 없음 또는 유효하지 않음: " + e.getMessage());
         }
         
-        List<ListingDto> listings = listingService.getAllListings(roomType, minPrice, maxPrice, search, userId);
+        List<ListingDto> listings = listingService.getAllListings(roomType, minPrice, maxPrice, search, sort, userId);
         
         // 찜한 매물이 있는지 확인
         long favoriteCount = listings.stream()
