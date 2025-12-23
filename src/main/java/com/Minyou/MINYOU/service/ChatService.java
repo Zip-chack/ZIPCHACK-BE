@@ -178,12 +178,8 @@ public class ChatService {
             if (existingMessages.isEmpty()) {
                 room.updateStatus(ChatRoomStatus.NEGOTIATING);
                 chatRoomMapper.update(room);
-                // 매물 상태를 예약중으로 변경
-                Listing listing = listingMapper.findById(room.getListingId());
-                if (listing != null && listing.getStatus() == ListingStatus.AVAILABLE) {
-                    listing.setStatus(ListingStatus.RESERVED);
-                    listingMapper.update(listing);
-                }
+                // 매물 상태 자동 변경 로직 삭제: 채팅 시작만으로 예약중(RESERVED)으로 바꾸지 않음.
+                // 주인이 직접 변경하거나 거래 완료 시에만 변경되도록 함.
             }
         }
 
