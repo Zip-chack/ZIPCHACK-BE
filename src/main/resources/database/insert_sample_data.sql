@@ -15,10 +15,10 @@ SET character_set_results = utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Users 샘플 데이터 (비밀번호: password123 - BCrypt 해시)
-INSERT INTO users (id, email, nickname, password, created_at) VALUES
-(1, 'user1@example.com', '홍길동', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW()),
-(2, 'user2@example.com', '김철수', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW()),
-(3, 'user3@example.com', '이영희', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', NOW())
+INSERT INTO users (id, email, nickname, password, name, username, created_at) VALUES
+(1, 'user1@example.com', '홍길동', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '홍길동', 'user1', NOW()),
+(2, 'user2@example.com', '김철수', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '김철수', 'user2', NOW()),
+(3, 'user3@example.com', '이영희', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '이영희', 'user3', NOW())
 ON DUPLICATE KEY UPDATE email=email;
 
 -- Buildings 샘플 데이터 (서울 강남구, 홍대, 이태원 지역)
@@ -32,14 +32,14 @@ ON DUPLICATE KEY UPDATE name=name;
 
 -- Listings 샘플 데이터 (가격 단위: 만원)
 INSERT INTO listings (id, building_id, user_id, title, room_type, deposit, monthly_rent, maintenance_fee, area_m2, floor, image_url, created_at) VALUES
-(1, 1, 1, '강남역 도보 5분 원룸', '원룸', 1000, 50, 5, 25.5, 5, 'https://via.placeholder.com/400x300', NOW()),
-(2, 1, 1, '강남역 투룸 전세', '투룸', 20000, 0, 0, 45.0, 10, 'https://via.placeholder.com/400x300', NOW()),
-(3, 2, 2, '홍대입구역 신축 원룸', '원룸', 500, 60, 6, 20.0, 3, 'https://via.placeholder.com/400x300', NOW()),
-(4, 2, 2, '홍대 프리미엄 오피스텔', '오피스텔', 1500, 80, 7, 35.0, 8, 'https://via.placeholder.com/400x300', NOW()),
-(5, 3, 3, '이태원 전망 좋은 원룸', '원룸', 800, 55, 5, 22.0, 12, 'https://via.placeholder.com/400x300', NOW()),
-(6, 4, 1, '신촌역 1분 거리 원룸', '원룸', 300, 40, 4, 18.0, 2, 'https://via.placeholder.com/400x300', NOW()),
-(7, 5, 2, '건대입구 신축 원룸', '원룸', 700, 65, 6, 24.0, 7, 'https://via.placeholder.com/400x300', NOW()),
-(8, 5, 3, '건대 투룸 월세', '투룸', 1000, 90, 8, 42.0, 15, 'https://via.placeholder.com/400x300', NOW())
+(1, 1, 1, '강남역 도보 5분 원룸', '원룸', 1000, 50, 5, 25.5, 5, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(2, 1, 1, '강남역 투룸 전세', '투룸', 20000, 0, 0, 45.0, 10, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(3, 2, 1, '홍대입구역 신축 원룸', '원룸', 500, 60, 6, 20.0, 3, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(4, 2, 1, '홍대 프리미엄 오피스텔', '오피스텔', 1500, 80, 7, 35.0, 8, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(5, 3, 1, '이태원 전망 좋은 원룸', '원룸', 800, 55, 5, 22.0, 12, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(6, 4, 1, '신촌역 1분 거리 원룸', '원룸', 300, 40, 4, 18.0, 2, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(7, 5, 1, '건대입구 신축 원룸', '원룸', 700, 65, 6, 24.0, 7, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW()),
+(8, 5, 1, '건대 투룸 월세', '투룸', 1000, 90, 8, 42.0, 15, 'https://minyou-images.s3.ap-northeast-2.amazonaws.com/listings/%E1%84%80%E1%85%B5%E1%84%87%E1%85%A9%E1%86%AB%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png', NOW())
 ON DUPLICATE KEY UPDATE title=title;
 
 -- Reviews 샘플 데이터

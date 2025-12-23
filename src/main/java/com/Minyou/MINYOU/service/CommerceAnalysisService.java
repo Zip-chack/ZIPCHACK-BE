@@ -1,5 +1,8 @@
 package com.Minyou.MINYOU.service;
 
+import com.Minyou.MINYOU.dto.ReviewDto;
+import com.Minyou.MINYOU.repository.ReviewRepository;
+import com.Minyou.MINYOU.entity.Review;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -11,20 +14,24 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
 public class CommerceAnalysisService {
     private final KakaoMapService kakaoMapService;
+    private final ReviewRepository reviewRepository;
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private static final String AI_SERVICE_URL = System.getenv("AI_SERVICE_URL") != null 
             ? System.getenv("AI_SERVICE_URL") 
             : "http://localhost:8001";
 
-    public CommerceAnalysisService(KakaoMapService kakaoMapService) {
+    public CommerceAnalysisService(KakaoMapService kakaoMapService, ReviewRepository reviewRepository) {
         this.kakaoMapService = kakaoMapService;
+        this.reviewRepository = reviewRepository;
         
         log.info("=".repeat(80));
         log.info("CommerceAnalysisService 초기화");
@@ -55,12 +62,70 @@ public class CommerceAnalysisService {
             return generateDefaultReport(null, lat, lng, radius);
         }
 
+        // 주변 리뷰 데이터 조회
+        List<Map<String, Object>> reviewsData = null;
+        try {
+            // 위도/경도 범위 계산 (대략적인 계산: 1도 ≈ 111km)
+            double latRange = radius / 111000.0; // 미터를 도로 변환
+            double lngRange = radius / (111000.0 * Math.cos(Math.toRadians(lat))); // 위도에 따른 경도 보정
+            
+            double minLat = lat - latRange;
+            double maxLat = lat + latRange;
+            double minLng = lng - lngRange;
+            double maxLng = lng + lngRange;
+            
+            List<Review> reviews = reviewRepository.findNearbyReviews(minLat, maxLat, minLng, maxLng);
+            
+            // 정확한 거리 계산 및 필터링 (하버사인 공식)
+            reviews = reviews.stream()
+                    .filter(review -> {
+                        if (review.getBuilding() == null) return false;
+                        double reviewLat = review.getBuilding().getLat();
+                        double reviewLng = review.getBuilding().getLng();
+                        
+                        // 하버사인 공식으로 거리 계산
+                        double earthRadius = 6371000; // 미터
+                        double dLat = Math.toRadians(reviewLat - lat);
+                        double dLng = Math.toRadians(reviewLng - lng);
+                        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                                Math.cos(Math.toRadians(lat)) * Math.cos(Math.toRadians(reviewLat)) *
+                                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+                        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                        double distance = earthRadius * c;
+                        
+                        return distance <= radius;
+                    })
+                    .collect(Collectors.toList());
+            
+            reviewsData = reviews.stream()
+                    .map(review -> {
+                        Map<String, Object> reviewMap = new HashMap<>();
+                        reviewMap.put("title", review.getTitle());
+                        reviewMap.put("content", review.getContent());
+                        reviewMap.put("ratingOverall", review.getRatingOverall());
+                        reviewMap.put("ratingNoise", review.getRatingNoise());
+                        reviewMap.put("ratingLandlord", review.getRatingLandlord());
+                        reviewMap.put("ratingFacility", review.getRatingFacility());
+                        if (review.getBuilding() != null) {
+                            reviewMap.put("buildingName", review.getBuilding().getName());
+                        }
+                        return reviewMap;
+                    })
+                    .collect(Collectors.toList());
+            log.info("주변 리뷰 {}개 조회 완료", reviews.size());
+        } catch (Exception e) {
+            log.warn("리뷰 데이터 조회 실패 (계속 진행): {}", e.getMessage());
+            e.printStackTrace();
+            reviewsData = List.of();
+        }
+
         try {
             // AI 서버에 요청
             log.info("\n" + "=".repeat(80));
             log.info("Python AI 서버로 요청 전송 시작");
             log.info("URL: {}/api/commerce-analysis", AI_SERVICE_URL);
             log.info("위도: {}, 경도: {}, 반경: {}m", lat, lng, radius);
+            log.info("리뷰 개수: {}", reviewsData != null ? reviewsData.size() : 0);
             log.info("=".repeat(80));
             
             Map<String, Object> requestBody = new HashMap<>();
@@ -68,6 +133,7 @@ public class CommerceAnalysisService {
             requestBody.put("lng", lng);
             requestBody.put("radius", radius);
             requestBody.put("commerce_info", commerceInfo);
+            requestBody.put("reviews", reviewsData != null ? reviewsData : List.of());
 
             String response = webClient.post()
                     .uri("/api/commerce-analysis")
