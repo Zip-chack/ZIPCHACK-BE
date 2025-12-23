@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.ReviewMapper">
+    
+    <resultMap id="ReviewResultMap" type="com.Minyou.MINYOU.entity.Review">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="ratingOverall" column="rating_overall"/>
+        <result property="ratingNoise" column="rating_noise"/>
+        <result property="ratingLandlord" column="rating_landlord"/>
+        <result property="ratingFacility" column="rating_facility"/>
+        <result property="createdAt" column="created_at"/>
+        <association property="user" column="user_id" 
+                     select="com.Minyou.MINYOU.mapper.UserMapper.findById" 
+                     fetchType="lazy"/>
+        <association property="listing" column="listing_id" 
+                     select="com.Minyou.MINYOU.mapper.ListingMapper.findById" 
+                     fetchType="lazy"/>
+        <association property="building" column="building_id" 
+                     select="com.Minyou.MINYOU.mapper.BuildingMapper.findById" 
+                     fetchType="lazy"/>
+    </resultMap>
+    
+    <select id="findAll" resultMap="ReviewResultMap">
+        SELECT * FROM reviews
+    </select>
+    
+    <select id="findById" resultMap="ReviewResultMap">
+        SELECT * FROM reviews WHERE id = #{id}
+    </select>
+    
+    <select id="findByListingId" resultMap="ReviewResultMap">
+        SELECT * FROM reviews WHERE listing_id = #{listingId}
+    </select>
+    
+    <select id="findByBuildingId" resultMap="ReviewResultMap">
+        SELECT * FROM reviews WHERE building_id = #{buildingId}
+    </select>
+    
+    <select id="findByUserId" resultMap="ReviewResultMap">
+        SELECT * FROM reviews WHERE user_id = #{userId}
+    </select>
+    
+    <select id="findByUserIdWithDetails" resultMap="ReviewResultMap">
+        SELECT DISTINCT r.* FROM reviews r
+        LEFT JOIN users u ON r.user_id = u.id
+        LEFT JOIN listings l ON r.listing_id = l.id
+        LEFT JOIN buildings b1 ON l.building_id = b1.id
+        LEFT JOIN buildings b2 ON r.building_id = b2.id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.created_at DESC
+    </select>
+    
+    <select id="findNearbyReviews" resultMap="ReviewResultMap">
+        SELECT r.* FROM reviews r
+        LEFT JOIN buildings b ON r.building_id = b.id
+        WHERE b.lat IS NOT NULL AND b.lng IS NOT NULL
+          AND b.lat BETWEEN #{minLat} AND #{maxLat}
+          AND b.lng BETWEEN #{minLng} AND #{maxLng}
+        ORDER BY r.created_at DESC
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reviews (
+            title, content, rating_overall, rating_noise, rating_landlord, rating_facility,
+            user_id, listing_id, building_id, created_at
+        ) VALUES (
+            #{title}, #{content}, #{ratingOverall}, #{ratingNoise}, #{ratingLandlord}, #{ratingFacility},
+            #{user.id}, #{listing.id}, #{building.id}, NOW()
+        )
+    </insert>
+    
+    <update id="update">
+        UPDATE reviews SET
+            title = #{title},
+            content = #{content},
+            rating_overall = #{ratingOverall},
+            rating_noise = #{ratingNoise},
+            rating_landlord = #{ratingLandlord},
+            rating_facility = #{ratingFacility}
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="delete">
+        DELETE FROM reviews WHERE id = #{id}
+    </delete>
+    
+</mapper>
+

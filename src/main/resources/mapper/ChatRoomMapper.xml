@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.ChatRoomMapper">
+    
+    <resultMap id="ChatRoomResultMap" type="com.Minyou.MINYOU.entity.ChatRoom">
+        <id property="id" column="id"/>
+        <result property="listingId" column="listing_id"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="buyerId" column="buyer_id"/>
+        <result property="status" column="status" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+    
+    <select id="findAll" resultMap="ChatRoomResultMap">
+        SELECT * FROM chat_room
+    </select>
+    
+    <select id="findById" resultMap="ChatRoomResultMap">
+        SELECT * FROM chat_room WHERE id = #{id}
+    </select>
+    
+    <select id="findByListingIdAndBuyerId" resultMap="ChatRoomResultMap">
+        SELECT * FROM chat_room 
+        WHERE listing_id = #{listingId} AND buyer_id = #{buyerId}
+        LIMIT 1
+    </select>
+    
+    <!-- Optional 처리를 위한 별도 메서드 (null 반환 시 Optional.empty()) -->
+    
+    <select id="findByOwnerIdOrBuyerId" resultMap="ChatRoomResultMap">
+        SELECT * FROM chat_room 
+        WHERE owner_id = #{ownerId} OR buyer_id = #{buyerId}
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_room (listing_id, owner_id, buyer_id, status, created_at, updated_at)
+        VALUES (#{listingId}, #{ownerId}, #{buyerId}, #{status}, NOW(), NOW())
+    </insert>
+    
+    <update id="update">
+        UPDATE chat_room SET
+            listing_id = #{listingId},
+            owner_id = #{ownerId},
+            buyer_id = #{buyerId},
+            status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="delete">
+        DELETE FROM chat_room WHERE id = #{id}
+    </delete>
+    
+</mapper>
+

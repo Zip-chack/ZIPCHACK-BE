@@ -1,7 +1,7 @@
 package com.Minyou.MINYOU.service;
 
 import com.Minyou.MINYOU.dto.ReviewDto;
-import com.Minyou.MINYOU.repository.ReviewRepository;
+import com.Minyou.MINYOU.mapper.ReviewMapper;
 import com.Minyou.MINYOU.entity.Review;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,16 +22,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CommerceAnalysisService {
     private final KakaoMapService kakaoMapService;
-    private final ReviewRepository reviewRepository;
+    private final ReviewMapper reviewMapper;
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private static final String AI_SERVICE_URL = System.getenv("AI_SERVICE_URL") != null 
             ? System.getenv("AI_SERVICE_URL") 
             : "http://localhost:8001";
 
-    public CommerceAnalysisService(KakaoMapService kakaoMapService, ReviewRepository reviewRepository) {
+    public CommerceAnalysisService(KakaoMapService kakaoMapService, ReviewMapper reviewMapper) {
         this.kakaoMapService = kakaoMapService;
-        this.reviewRepository = reviewRepository;
+        this.reviewMapper = reviewMapper;
         
         log.info("=".repeat(80));
         log.info("CommerceAnalysisService 초기화");
@@ -74,7 +74,7 @@ public class CommerceAnalysisService {
             double minLng = lng - lngRange;
             double maxLng = lng + lngRange;
             
-            List<Review> reviews = reviewRepository.findNearbyReviews(minLat, maxLat, minLng, maxLng);
+            List<Review> reviews = reviewMapper.findNearbyReviews(minLat, maxLat, minLng, maxLng);
             
             // 정확한 거리 계산 및 필터링 (하버사인 공식)
             reviews = reviews.stream()

@@ -3,7 +3,7 @@ package com.Minyou.MINYOU.controller;
 import com.Minyou.MINYOU.dto.ListingDto;
 import com.Minyou.MINYOU.dto.ReviewDto;
 import com.Minyou.MINYOU.entity.User;
-import com.Minyou.MINYOU.repository.UserRepository;
+import com.Minyou.MINYOU.mapper.UserMapper;
 import com.Minyou.MINYOU.service.ChatService;
 import com.Minyou.MINYOU.service.ListingService;
 import com.Minyou.MINYOU.service.ReviewService;
@@ -24,42 +24,45 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final ListingService listingService;
     private final ReviewService reviewService;
     private final ChatService chatService;
 
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(userRepository.findAll());
+        return ResponseEntity.ok(userMapper.findAll());
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<User> getUserById(@PathVariable Long userId) {
-        Optional<User> user = userRepository.findById(userId);
-        return user.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(user);
     }
 
     @PostMapping
     public ResponseEntity<User> createUser(@RequestBody User user) {
-        User savedUser = userRepository.save(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
+        userMapper.insert(user);
+        return ResponseEntity.status(HttpStatus.CREATED).body(user);
     }
 
     @PutMapping("/{userId}")
     public ResponseEntity<User> updateUser(@PathVariable Long userId, @RequestBody User user) {
-        if (!userRepository.findById(userId).isPresent()) {
+        User existingUser = userMapper.findById(userId);
+        if (existingUser == null) {
             return ResponseEntity.notFound().build();
         }
         user.setId(userId);
-        User updatedUser = userRepository.save(user);
-        return ResponseEntity.ok(updatedUser);
+        userMapper.update(user);
+        return ResponseEntity.ok(user);
     }
 
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
-        userRepository.deleteById(userId);
+        userMapper.delete(userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -75,8 +78,10 @@ public class UserController {
             log.info("추출된 userId: {}", userId);
             
             // 사용자 정보
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+            User user = userMapper.findById(userId);
+            if (user == null) {
+                throw new RuntimeException("사용자를 찾을 수 없습니다.");
+            }
             
             // 통계 정보
             long listingCount = listingService.getUserListings(userId).size();

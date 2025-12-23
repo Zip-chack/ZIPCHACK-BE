@@ -7,10 +7,10 @@ import com.Minyou.MINYOU.entity.ChatMessage;
 import com.Minyou.MINYOU.entity.Listing;
 import com.Minyou.MINYOU.entity.ListingStatus;
 import com.Minyou.MINYOU.entity.User;
-import com.Minyou.MINYOU.repository.ChatRoomRepository;
-import com.Minyou.MINYOU.repository.ChatMessageRepository;
-import com.Minyou.MINYOU.repository.ListingRepository;
-import com.Minyou.MINYOU.repository.UserRepository;
+import com.Minyou.MINYOU.mapper.ChatRoomMapper;
+import com.Minyou.MINYOU.mapper.ChatMessageMapper;
+import com.Minyou.MINYOU.mapper.ListingMapper;
+import com.Minyou.MINYOU.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
@@ -24,67 +24,71 @@ import java.util.stream.Collectors;
 @Transactional
 public class ChatService {
 
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatMessageRepository chatMessageRepository;
-    private final ListingRepository listingRepository;
-    private final UserRepository userRepository;
+    private final ChatRoomMapper chatRoomMapper;
+    private final ChatMessageMapper chatMessageMapper;
+    private final ListingMapper listingMapper;
+    private final UserMapper userMapper;
     private final SimpMessageSendingOperations messagingTemplate;
 
     /**
      * 매물 ID와 구매자 ID 기준으로 채팅방을 조회하거나 없으면 새로 생성한다.
      */
     public ChatRoomResponse createOrGetRoom(Long listingId, Long loginUserId) {
-        return chatRoomRepository.findByListingIdAndBuyerId(listingId, loginUserId)
-                .map(room -> {
-                    Long targetUserId = room.getOwnerId().equals(loginUserId) ? room.getBuyerId() : room.getOwnerId();
-                    String targetUserNickname = userRepository.findById(targetUserId)
-                            .map(com.Minyou.MINYOU.entity.User::getNickname)
-                            .orElse("Unknown User");
-                    boolean amIOwner = room.getOwnerId().equals(loginUserId);
-                    return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus(), amIOwner);
-                })
-                .orElseGet(() -> {
-                    Listing listing = listingRepository.findById(listingId)
-                            .orElseThrow(() -> new IllegalArgumentException("Listing not found"));
-                    
-                    if (listing.getStatus() == ListingStatus.COMPLETED) {
-                        throw new IllegalStateException("이미 거래가 완료된 매물입니다.");
-                    }
+        ChatRoom existingRoom = chatRoomMapper.findByListingIdAndBuyerId(listingId, loginUserId).orElse(null);
+        if (existingRoom != null) {
+            ChatRoom room = existingRoom;
+            Long targetUserId = room.getOwnerId().equals(loginUserId) ? room.getBuyerId() : room.getOwnerId();
+            User targetUser = userMapper.findById(targetUserId);
+            String targetUserNickname = targetUser != null ? targetUser.getNickname() : "Unknown User";
+            boolean amIOwner = room.getOwnerId().equals(loginUserId);
+            return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus(), amIOwner);
+        }
+        
+        // 채팅방이 없으면 새로 생성
+        Listing listing = listingMapper.findById(listingId);
+        if (listing == null) {
+            throw new IllegalArgumentException("Listing not found");
+        }
+        
+        if (listing.getStatus() == ListingStatus.COMPLETED) {
+            throw new IllegalStateException("이미 거래가 완료된 매물입니다.");
+        }
 
-                    if (listing.getUser().getId().equals(loginUserId)) {
-                        throw new IllegalArgumentException("Owner cannot start a chat with themselves.");
-                    }
-                    
-                    User targetUser = listing.getUser();
+        if (listing.getUser().getId().equals(loginUserId)) {
+            throw new IllegalArgumentException("Owner cannot start a chat with themselves.");
+        }
+        
+        User targetUser = listing.getUser();
 
-                    ChatRoom newRoom = ChatRoom.builder()
-                            .listingId(listingId)
-                            .ownerId(targetUser.getId()) // Listing owner is the owner of the chat
-                            .buyerId(loginUserId)         // Initiating user is the buyer of the chat
-                            .build();
-                    chatRoomRepository.save(newRoom);
-                    
-                    boolean amIOwner = false;
-                    return new ChatRoomResponse(newRoom.getId(), targetUser.getId(), targetUser.getNickname(), newRoom.getStatus(), amIOwner);
-                });
+        ChatRoom newRoom = ChatRoom.builder()
+                .listingId(listingId)
+                .ownerId(targetUser.getId()) // Listing owner is the owner of the chat
+                .buyerId(loginUserId)         // Initiating user is the buyer of the chat
+                .build();
+        chatRoomMapper.insert(newRoom);
+        
+        boolean amIOwner = false;
+        return new ChatRoomResponse(newRoom.getId(), targetUser.getId(), targetUser.getNickname(), newRoom.getStatus(), amIOwner);
     }
 
     /**
      * 사용자가 참여 중인 모든 채팅방 목록과 마지막 메시지를 조회한다.
      */
     public List<MyChatRoomResponse> getMyChatRooms(Long loginUserId) {
-        List<ChatRoom> rooms = chatRoomRepository.findByOwnerIdOrBuyerId(loginUserId, loginUserId);
+        List<ChatRoom> rooms = chatRoomMapper.findByOwnerIdOrBuyerId(loginUserId, loginUserId);
         return rooms.stream().map(room -> {
             Long targetUserId = room.getOwnerId().equals(loginUserId) ? room.getBuyerId() : room.getOwnerId();
             // 로그인 사용자 기준으로 상대방 정보 계산
-            String targetUserNickname = userRepository.findById(targetUserId)
-                    .map(com.Minyou.MINYOU.entity.User::getNickname)
-                    .orElse("Unknown User");
+            User targetUser = userMapper.findById(targetUserId);
+            String targetUserNickname = targetUser != null ? targetUser.getNickname() : "Unknown User";
 
-            String lastMessage = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(room.getId())
-                    .stream().reduce((first, second) -> second).map(ChatMessage::getContent).orElse("No messages yet.");
+            List<ChatMessage> messages = chatMessageMapper.findByChatRoomIdOrderByCreatedAtAsc(room.getId());
+            String lastMessage = messages.stream()
+                    .reduce((first, second) -> second)
+                    .map(ChatMessage::getContent)
+                    .orElse("No messages yet.");
             
-            long unreadCount = chatMessageRepository.countUnreadMessagesByChatRoomIdAndUserId(room.getId(), loginUserId);
+            long unreadCount = chatMessageMapper.countUnreadMessagesByChatRoomIdAndUserId(room.getId(), loginUserId);
 
             return MyChatRoomResponse.builder()
                     .roomId(room.getId())
@@ -103,19 +107,23 @@ public class ChatService {
      */
     @Transactional
     public List<ChatMessageResponse> getChatMessages(Long roomId, Long userId) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+        ChatRoom room = chatRoomMapper.findById(roomId);
+        if (room == null) {
+            throw new IllegalArgumentException("Chat room not found.");
+        }
         if (!room.getOwnerId().equals(userId) && !room.getBuyerId().equals(userId)) {
             throw new SecurityException("You do not have permission to view this chat.");
         }
         
         // 채팅방 입장 시 모든 메시지를 읽음 처리
-        List<ChatMessage> messages = chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId);
+        List<ChatMessage> messages = chatMessageMapper.findByChatRoomIdOrderByCreatedAtAsc(roomId);
         messages.forEach(message -> {
             if (room.getOwnerId().equals(userId) && !message.getReadByOwner()) {
                 message.markAsReadByOwner();
+                chatMessageMapper.update(message);
             } else if (room.getBuyerId().equals(userId) && !message.getReadByBuyer()) {
                 message.markAsReadByBuyer();
+                chatMessageMapper.update(message);
             }
         });
         
@@ -129,22 +137,23 @@ public class ChatService {
      */
     @Transactional(readOnly = true)
     public long getUnreadMessageCount(Long userId) {
-        return chatMessageRepository.countUnreadMessagesByUserId(userId);
+        return chatMessageMapper.countUnreadMessagesByUserId(userId);
     }
 
     /**
      * 특정 채팅방의 상세 정보를 조회한다.
      */
     public ChatRoomResponse getRoomById(Long roomId, Long loginUserId) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+        ChatRoom room = chatRoomMapper.findById(roomId);
+        if (room == null) {
+            throw new IllegalArgumentException("Chat room not found.");
+        }
         if (!room.getOwnerId().equals(loginUserId) && !room.getBuyerId().equals(loginUserId)) {
             throw new SecurityException("You do not have permission to access this chat room.");
         }
         Long targetUserId = room.getOwnerId().equals(loginUserId) ? room.getBuyerId() : room.getOwnerId();
-        String targetUserNickname = userRepository.findById(targetUserId)
-                .map(com.Minyou.MINYOU.entity.User::getNickname)
-                .orElse("Unknown User");
+        User targetUser = userMapper.findById(targetUserId);
+        String targetUserNickname = targetUser != null ? targetUser.getNickname() : "Unknown User";
         boolean amIOwner = room.getOwnerId().equals(loginUserId);
         return new ChatRoomResponse(room.getId(), targetUserId, targetUserNickname, room.getStatus(), amIOwner);
     }
@@ -154,8 +163,10 @@ public class ChatService {
      */
     @Transactional
     public ChatMessage saveMessage(Long roomId, ChatMessageDto dto) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+        ChatRoom room = chatRoomMapper.findById(roomId);
+        if (room == null) {
+            throw new IllegalArgumentException("Chat room not found.");
+        }
 
         if (room.getStatus() == ChatRoomStatus.COMPLETED) {
             throw new IllegalStateException("This chat room is already completed.");
@@ -163,15 +174,16 @@ public class ChatService {
 
         // 첫 메시지 전송 시 상태를 NEGOTIATING으로 변경
         if (room.getStatus() == ChatRoomStatus.WAITING) {
-            if (chatMessageRepository.findByChatRoomIdOrderByCreatedAtAsc(roomId).isEmpty()) {
+            List<ChatMessage> existingMessages = chatMessageMapper.findByChatRoomIdOrderByCreatedAtAsc(roomId);
+            if (existingMessages.isEmpty()) {
                 room.updateStatus(ChatRoomStatus.NEGOTIATING);
+                chatRoomMapper.update(room);
                 // 매물 상태를 예약중으로 변경
-                listingRepository.findById(room.getListingId()).ifPresent(l -> {
-                    if (l.getStatus() == ListingStatus.AVAILABLE) {
-                        l.setStatus(ListingStatus.RESERVED);
-                        listingRepository.saveAndFlush(l);
-                    }
-                });
+                Listing listing = listingMapper.findById(room.getListingId());
+                if (listing != null && listing.getStatus() == ListingStatus.AVAILABLE) {
+                    listing.setStatus(ListingStatus.RESERVED);
+                    listingMapper.update(listing);
+                }
             }
         }
 
@@ -186,7 +198,8 @@ public class ChatService {
                 .readByBuyer(!isOwner) // 보낸 사람이 buyer면 buyer는 읽음, owner는 읽지 않음
                 .build();
         
-        return chatMessageRepository.save(message);
+        chatMessageMapper.insert(message);
+        return message;
     }
 
     /**
@@ -194,8 +207,10 @@ public class ChatService {
      */
     @Transactional
     public void completeChat(Long roomId, Long userId) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+        ChatRoom room = chatRoomMapper.findById(roomId);
+        if (room == null) {
+            throw new IllegalArgumentException("Chat room not found.");
+        }
 
         // 매물 등록자(Owner)만 거래 완료 가능
         if (!room.getOwnerId().equals(userId)) {
@@ -209,14 +224,15 @@ public class ChatService {
 
         System.out.println("Updating chat room " + roomId + " to COMPLETED.");
         room.updateStatus(ChatRoomStatus.COMPLETED);
-        chatRoomRepository.saveAndFlush(room);
+        chatRoomMapper.update(room);
 
         // 해당 채팅방과 연결된 매물의 상태도 '거래 완료'로 변경
-        listingRepository.findById(room.getListingId()).ifPresent(listing -> {
+        Listing listing = listingMapper.findById(room.getListingId());
+        if (listing != null) {
             System.out.println("Updating listing " + listing.getId() + " to COMPLETED.");
             listing.setStatus(ListingStatus.COMPLETED);
-            listingRepository.saveAndFlush(listing);
-        });
+            listingMapper.update(listing);
+        }
 
         sendSystemMessage(room, "거래가 완료되었습니다. 이 채팅방은 종료됩니다.");
     }
@@ -226,18 +242,20 @@ public class ChatService {
      */
     @Transactional
     public void deleteChatRoom(Long roomId, Long userId) {
-        ChatRoom room = chatRoomRepository.findById(roomId)
-                .orElseThrow(() -> new IllegalArgumentException("Chat room not found."));
+        ChatRoom room = chatRoomMapper.findById(roomId);
+        if (room == null) {
+            throw new IllegalArgumentException("Chat room not found.");
+        }
 
         if (!room.getOwnerId().equals(userId) && !room.getBuyerId().equals(userId)) {
             throw new SecurityException("You do not have permission to delete this chat room.");
         }
 
         // 1. 채팅 메시지 삭제
-        chatMessageRepository.deleteByChatRoomId(roomId);
+        chatMessageMapper.deleteByChatRoomId(roomId);
 
         // 2. 채팅방 삭제
-        chatRoomRepository.deleteById(roomId);
+        chatRoomMapper.delete(roomId);
     }
 
     /**

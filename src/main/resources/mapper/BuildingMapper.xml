@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.BuildingMapper">
+    
+    <resultMap id="BuildingResultMap" type="com.Minyou.MINYOU.entity.Building">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="roadAddress" column="road_address"/>
+        <result property="lat" column="lat"/>
+        <result property="lng" column="lng"/>
+        <result property="builtYear" column="built_year"/>
+    </resultMap>
+    
+    <select id="findAll" resultMap="BuildingResultMap">
+        SELECT * FROM buildings
+    </select>
+    
+    <select id="findById" resultMap="BuildingResultMap">
+        SELECT * FROM buildings WHERE id = #{id}
+    </select>
+    
+    <select id="searchByQuery" resultMap="BuildingResultMap">
+        SELECT * FROM buildings 
+        WHERE name LIKE CONCAT('%', #{query}, '%') 
+           OR road_address LIKE CONCAT('%', #{query}, '%')
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO buildings (name, road_address, lat, lng, built_year)
+        VALUES (#{name}, #{roadAddress}, #{lat}, #{lng}, #{builtYear})
+    </insert>
+    
+    <insert id="insertWithId">
+        INSERT INTO buildings (id, name, road_address, lat, lng, built_year)
+        VALUES (#{id}, #{name}, #{roadAddress}, #{lat}, #{lng}, #{builtYear})
+    </insert>
+    
+    <update id="update">
+        UPDATE buildings SET
+            name = #{name},
+            road_address = #{roadAddress},
+            lat = #{lat},
+            lng = #{lng},
+            built_year = #{builtYear}
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="delete">
+        DELETE FROM buildings WHERE id = #{id}
+    </delete>
+    
+</mapper>
+

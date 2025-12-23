@@ -2,9 +2,9 @@ package com.Minyou.MINYOU.service;
 
 import com.Minyou.MINYOU.dto.*;
 import com.Minyou.MINYOU.entity.User;
-import com.Minyou.MINYOU.repository.ChatMessageRepository;
-import com.Minyou.MINYOU.repository.ChatRoomRepository;
-import com.Minyou.MINYOU.repository.UserRepository;
+import com.Minyou.MINYOU.mapper.ChatMessageMapper;
+import com.Minyou.MINYOU.mapper.ChatRoomMapper;
+import com.Minyou.MINYOU.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,18 +19,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Transactional
 public class AuthService {
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatMessageRepository chatMessageRepository;
+    private final ChatRoomMapper chatRoomMapper;
+    private final ChatMessageMapper chatMessageMapper;
 
     /**
      * 이메일 인증 코드 전송
      */
     public void sendEmailVerificationCode(String email) {
         // 이미 가입된 이메일인지 확인
-        User existingUser = userRepository.findByEmail(email).orElse(null);
+        User existingUser = userMapper.findByEmail(email);
         if (existingUser != null && Boolean.TRUE.equals(existingUser.getEmailVerified())) {
             throw new RuntimeException("이미 가입된 이메일입니다.");
         }
@@ -54,12 +54,12 @@ public class AuthService {
                     .emailVerificationCode(verificationCode)
                     .emailVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10))
                     .build();
-            userRepository.save(tempUser);
+            userMapper.insert(tempUser);
         } else {
             // 기존 임시 사용자 업데이트
             existingUser.setEmailVerificationCode(verificationCode);
             existingUser.setEmailVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10));
-            userRepository.save(existingUser);
+            userMapper.update(existingUser);
         }
 
         // 이메일 전송 (실패해도 인증 코드는 저장됨)
@@ -81,8 +81,10 @@ public class AuthService {
      * 이메일 인증 코드 검증
      */
     public boolean verifyEmailCode(String email, String code) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("이메일을 찾을 수 없습니다."));
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("이메일을 찾을 수 없습니다.");
+        }
 
         if (user.getEmailVerificationCode() == null || !user.getEmailVerificationCode().equals(code)) {
             throw new RuntimeException("인증 코드가 일치하지 않습니다.");
@@ -97,20 +99,22 @@ public class AuthService {
         user.setEmailVerified(true);
         user.setEmailVerificationCode(null);
         user.setEmailVerificationCodeExpiry(null);
-        userRepository.save(user);
+        userMapper.update(user);
 
         return true;
     }
 
     public AuthResponse register(RegisterRequest request) {
         // 아이디 중복 확인
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userMapper.existsByUsername(request.getUsername())) {
             throw new RuntimeException("이미 사용 중인 아이디입니다.");
         }
 
         // 이메일 인증 여부 확인
-        User tempUser = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("이메일 인증을 먼저 완료해주세요."));
+        User tempUser = userMapper.findByEmail(request.getEmail());
+        if (tempUser == null) {
+            throw new RuntimeException("이메일 인증을 먼저 완료해주세요.");
+        }
 
         // 이미 완전히 가입된 사용자인지 확인
         if (Boolean.TRUE.equals(tempUser.getEmailVerified()) && 
@@ -134,7 +138,8 @@ public class AuthService {
         tempUser.setEmailVerificationCode(null);
         tempUser.setEmailVerificationCodeExpiry(null);
 
-        User user = userRepository.save(tempUser);
+        userMapper.update(tempUser);
+        User user = tempUser;
 
         String token = generateToken(user);
 
@@ -150,15 +155,9 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         // 이메일 또는 아이디로 사용자 찾기
-        User user = null;
-        java.util.Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
-        if (userOpt.isPresent()) {
-            user = userOpt.get();
-        } else {
-            userOpt = userRepository.findByUsername(request.getEmail());
-            if (userOpt.isPresent()) {
-                user = userOpt.get();
-            }
+        User user = userMapper.findByEmail(request.getEmail());
+        if (user == null) {
+            user = userMapper.findByUsername(request.getEmail());
         }
         
         if (user == null) {
@@ -182,8 +181,10 @@ public class AuthService {
     }
 
     public UserDto getCurrentUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         return UserDto.builder()
                 .id(user.getId())
@@ -193,19 +194,21 @@ public class AuthService {
     }
 
     public boolean checkEmailExists(String email) {
-        return userRepository.existsByEmail(email);
+        return userMapper.existsByEmail(email);
     }
 
     public boolean checkUsernameExists(String username) {
-        return userRepository.existsByUsername(username);
+        return userMapper.existsByUsername(username);
     }
 
     /**
      * 회원 정보 수정 (닉네임, 비밀번호)
      */
     public UserDto updateUser(Long userId, UpdateUserRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         // 닉네임 변경
         if (request.getNickname() != null && !request.getNickname().trim().isEmpty()) {
@@ -232,7 +235,7 @@ public class AuthService {
             user.setPassword(passwordEncoder.encode(newPassword));
         }
 
-        user = userRepository.save(user);
+        userMapper.update(user);
 
         return UserDto.builder()
                 .id(user.getId())
@@ -246,8 +249,7 @@ public class AuthService {
      * 일치하면 아이디만 반환
      */
     public Map<String, Object> findUsername(String email, String name) {
-        User user = userRepository.findByEmail(email)
-                .orElse(null);
+        User user = userMapper.findByEmail(email);
 
         Map<String, Object> response = new HashMap<>();
         
@@ -276,8 +278,10 @@ public class AuthService {
      * 비밀번호 찾기 - 인증 코드 전송
      */
     public Map<String, Object> requestPasswordReset(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("등록되지 않은 이메일입니다.");
+        }
 
         // 6자리 랜덤 인증 코드 생성
         String verificationCode = String.format("%06d", (int)(Math.random() * 1000000));
@@ -285,7 +289,7 @@ public class AuthService {
         // 인증 코드 저장 (10분 유효)
         user.setEmailVerificationCode(verificationCode);
         user.setEmailVerificationCodeExpiry(LocalDateTime.now().plusMinutes(10));
-        userRepository.save(user);
+        userMapper.update(user);
 
         // 이메일로 인증 코드 전송 (실패해도 인증 코드는 저장됨)
         try {
@@ -314,8 +318,10 @@ public class AuthService {
      * 비밀번호 찾기용 인증 코드 검증
      */
     public Map<String, Object> verifyPasswordResetCode(String email, String code) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("등록되지 않은 이메일입니다.");
+        }
 
         Map<String, Object> response = new HashMap<>();
 
@@ -343,8 +349,10 @@ public class AuthService {
      * 비밀번호 재설정 (인증 코드 검증 후)
      */
     public void resetPassword(String email, String code, String newPassword) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("등록되지 않은 이메일입니다."));
+        User user = userMapper.findByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("등록되지 않은 이메일입니다.");
+        }
 
         // 인증 코드 확인
         if (user.getEmailVerificationCode() == null || !user.getEmailVerificationCode().equals(code)) {
@@ -372,7 +380,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(newPassword.trim()));
         user.setEmailVerificationCode(null);
         user.setEmailVerificationCodeExpiry(null);
-        userRepository.save(user);
+        userMapper.update(user);
     }
 
     /**
@@ -380,26 +388,29 @@ public class AuthService {
      */
     @Transactional
     public void deleteAccount(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         // 1. 사용자가 참여한 채팅방 찾기
-        var chatRooms = chatRoomRepository.findByOwnerIdOrBuyerId(userId, userId);
+        var chatRooms = chatRoomMapper.findByOwnerIdOrBuyerId(userId, userId);
         
         // 2. 각 채팅방의 메시지 삭제
         for (var room : chatRooms) {
-            chatMessageRepository.deleteByChatRoomId(room.getId());
+            chatMessageMapper.deleteByChatRoomId(room.getId());
         }
         
         // 3. 사용자가 참여한 채팅방 삭제
-        chatRoomRepository.deleteAll(chatRooms);
+        for (var room : chatRooms) {
+            chatRoomMapper.delete(room.getId());
+        }
         
-        // 4. 찜한 매물 관계 삭제 (ManyToMany)
-        user.getFavoriteListings().clear();
-        userRepository.save(user); // 관계 업데이트 저장
+        // 4. 찜한 매물 관계 삭제는 FavoriteMapper로 처리
+        // (User 엔티티의 getFavoriteListings()는 JPA 관계이므로 MyBatis에서는 직접 처리)
         
-        // 5. 사용자 삭제 (CascadeType.ALL로 인해 Listings, Reviews도 자동 삭제됨)
-        userRepository.delete(user);
+        // 5. 사용자 삭제
+        userMapper.delete(userId);
     }
 
     private String generateToken(User user) {

@@ -4,8 +4,9 @@ import com.Minyou.MINYOU.dto.ListingDto;
 import com.Minyou.MINYOU.entity.Listing;
 import com.Minyou.MINYOU.entity.User;
 import com.Minyou.MINYOU.mapper.ListingDtoMapper;
-import com.Minyou.MINYOU.repository.ListingRepository;
-import com.Minyou.MINYOU.repository.UserRepository;
+import com.Minyou.MINYOU.mapper.ListingMapper;
+import com.Minyou.MINYOU.mapper.UserMapper;
+import com.Minyou.MINYOU.mapper.FavoriteMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class FavoriteService {
-    private final UserRepository userRepository;
-    private final ListingRepository listingRepository;
+    private final UserMapper userMapper;
+    private final ListingMapper listingMapper;
+    private final FavoriteMapper favoriteMapper;
     private final ListingDtoMapper listingDtoMapper;
 
     /**
@@ -26,27 +28,24 @@ public class FavoriteService {
      */
     @Transactional
     public boolean toggleFavorite(Long listingId, Long userId) {
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingMapper.findById(listingId);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
-        // 영속성 컨텍스트에서 컬렉션을 초기화하여 최신 상태 확인
-        user.getFavoriteListings().size(); // 컬렉션 초기화
-        
-        // ID 기반으로 찜 여부 확인 (equals/hashCode 문제 방지)
-        boolean isFavorite = user.getFavoriteListings().stream()
-                .anyMatch(fav -> fav.getId().equals(listingId));
+        // 찜 여부 확인
+        boolean isFavorite = favoriteMapper.exists(userId, listingId);
         
         if (isFavorite) {
-            user.getFavoriteListings().removeIf(fav -> fav.getId().equals(listingId));
+            favoriteMapper.delete(userId, listingId);
         } else {
-            user.getFavoriteListings().add(listing);
+            favoriteMapper.insert(userId, listingId);
         }
-        
-        // 변경사항을 즉시 DB에 반영
-        userRepository.saveAndFlush(user);
 
         return !isFavorite; // 변경된 상태 반환
     }
@@ -55,10 +54,18 @@ public class FavoriteService {
      * 찜 목록 조회
      */
     public List<ListingDto> getFavorites(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
-        return user.getFavoriteListings().stream()
+        // 찜한 매물 ID 목록 조회
+        List<Long> favoriteIds = listingMapper.findFavoriteListingIdsByUserId(userId);
+        
+        // 매물 조회
+        return favoriteIds.stream()
+                .map(listingMapper::findById)
+                .filter(java.util.Objects::nonNull)
                 .map(listing -> listingDtoMapper.toDto(listing, true))  // 찜 목록이므로 항상 true
                 .collect(Collectors.toList());
     }
@@ -71,13 +78,7 @@ public class FavoriteService {
             return false;
         }
 
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            return false;
-        }
-
-        return user.getFavoriteListings().stream()
-                .anyMatch(fav -> fav.getId().equals(listingId));
+        return favoriteMapper.exists(userId, listingId);
     }
 }
 

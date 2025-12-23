@@ -5,12 +5,10 @@ import com.Minyou.MINYOU.entity.Building;
 import com.Minyou.MINYOU.entity.Listing;
 import com.Minyou.MINYOU.entity.User;
 import com.Minyou.MINYOU.mapper.ListingDtoMapper;
-import com.Minyou.MINYOU.repository.BuildingRepository;
-import com.Minyou.MINYOU.repository.ListingRepository;
-import com.Minyou.MINYOU.repository.ReviewRepository;
-import com.Minyou.MINYOU.repository.UserRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
+import com.Minyou.MINYOU.mapper.BuildingMapper;
+import com.Minyou.MINYOU.mapper.ListingMapper;
+import com.Minyou.MINYOU.mapper.UserMapper;
+import com.Minyou.MINYOU.mapper.ReviewMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -25,12 +24,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ListingService {
-    private final ListingRepository listingRepository;
-    private final BuildingRepository buildingRepository;
-    private final UserRepository userRepository;
-    private final ReviewRepository reviewRepository;
+    private final ListingMapper listingMapper;
+    private final BuildingMapper buildingMapper;
+    private final UserMapper userMapper;
+    private final ReviewMapper reviewMapper;
     private final ListingDtoMapper listingDtoMapper;
-    private final EntityManager entityManager;
 
     public List<ListingDto> getAllListings(String roomType, Integer minPrice, Integer maxPrice, String search, String sort, Long userId) {
         // 조인 쿼리를 사용하여 한 번의 쿼리로 매물과 찜 여부를 함께 가져옴
@@ -41,20 +39,18 @@ public class ListingService {
         // userId가 없는 경우 기존 방식 사용
         List<Listing> listings;
         if (search != null && !search.isEmpty()) {
-            // 검색어에 % 추가하여 LIKE 검색 지원
-            String searchQuery = "%" + search + "%";
-            listings = listingRepository.searchByQuery(searchQuery);
+            listings = listingMapper.searchByQuery(search);
         } else if (roomType != null && !roomType.isEmpty()) {
-            listings = listingRepository.findByRoomType(roomType);
+            listings = listingMapper.findByRoomType(roomType);
         } else if (minPrice != null && maxPrice != null) {
-            listings = listingRepository.findByMonthlyRentBetween(minPrice, maxPrice);
+            listings = listingMapper.findByMonthlyRentBetween(minPrice, maxPrice);
         } else if (minPrice != null) {
             // minPrice만 있는 경우 (100+ 케이스)
-            listings = listingRepository.findAll().stream()
+            listings = listingMapper.findAll().stream()
                     .filter(l -> l.getMonthlyRent() != null && l.getMonthlyRent() >= minPrice)
                     .collect(Collectors.toList());
         } else {
-            listings = listingRepository.findAll();
+            listings = listingMapper.findAll();
         }
 
         // 정렬 적용
@@ -69,88 +65,40 @@ public class ListingService {
      * 조인 쿼리를 사용하여 매물과 찜 여부를 한 번에 조회
      */
     private List<ListingDto> getAllListingsWithFavorite(String roomType, Integer minPrice, Integer maxPrice, String search, String sort, Long userId) {
-        String sql;
-        Query query;
-        
-        // 정렬 조건 결정
-        String orderBy = getOrderByClause(sort);
+        List<Map<String, Object>> results;
 
         if (search != null && !search.isEmpty()) {
-            sql = 
-                "SELECT l.*, " +
-                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
-                "FROM listings l " +
-                "LEFT JOIN buildings b ON l.building_id = b.id " +
-                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "WHERE b.road_address LIKE CONCAT('%', :query, '%') OR l.title LIKE CONCAT('%', :query, '%') OR b.name LIKE CONCAT('%', :query, '%') " +
-                orderBy;
-            query = entityManager.createNativeQuery(sql);
-            query.setParameter("query", search);
-            query.setParameter("userId", userId);
+            results = listingMapper.searchByQueryWithFavoriteStatus(search, userId);
         } else if (roomType != null && !roomType.isEmpty()) {
-            sql = 
-                "SELECT l.*, " +
-                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
-                "FROM listings l " +
-                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "WHERE l.room_type = :roomType " +
-                orderBy;
-            query = entityManager.createNativeQuery(sql);
-            query.setParameter("roomType", roomType);
-            query.setParameter("userId", userId);
+            results = listingMapper.findByRoomTypeWithFavoriteStatus(roomType, userId);
         } else if (minPrice != null && maxPrice != null) {
-            sql = 
-                "SELECT l.*, " +
-                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
-                "FROM listings l " +
-                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "WHERE l.monthly_rent BETWEEN :min AND :max " +
-                orderBy;
-            query = entityManager.createNativeQuery(sql);
-            query.setParameter("min", minPrice);
-            query.setParameter("max", maxPrice);
-            query.setParameter("userId", userId);
+            results = listingMapper.findByMonthlyRentBetweenWithFavoriteStatus(minPrice, maxPrice, userId);
         } else if (minPrice != null) {
-            // minPrice만 있는 경우 (100+ 케이스)
-            sql = 
-                "SELECT l.*, " +
-                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
-                "FROM listings l " +
-                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                "WHERE l.monthly_rent >= :min " +
-                orderBy;
-            query = entityManager.createNativeQuery(sql);
-            query.setParameter("min", minPrice);
-            query.setParameter("userId", userId);
+            // minPrice만 있는 경우는 전체 조회 후 필터링
+            results = listingMapper.findAllWithFavoriteStatus(userId);
+            results = results.stream()
+                    .filter(r -> {
+                        Integer rent = (Integer) r.get("monthly_rent");
+                        return rent != null && rent >= minPrice;
+                    })
+                    .collect(Collectors.toList());
         } else {
-            sql = 
-                "SELECT l.*, " +
-                "CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite " +
-                "FROM listings l " +
-                "LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = :userId " +
-                orderBy;
-            query = entityManager.createNativeQuery(sql);
-            query.setParameter("userId", userId);
+            results = listingMapper.findAllWithFavoriteStatus(userId);
         }
-
-        @SuppressWarnings("unchecked")
-        List<Object[]> results = query.getResultList();
 
         if (results.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // 결과에서 ID와 isFavorite를 추출
+        // 결과를 Listing 엔티티로 변환
         List<Long> listingIds = new ArrayList<>();
         java.util.Map<Long, Boolean> favoriteMap = new java.util.HashMap<>();
         
-        for (Object[] row : results) {
-            // 첫 번째 컬럼이 id (Number 타입으로 반환됨 - Long 또는 BigInteger)
-            Long listingId = ((Number) row[0]).longValue();
+        for (Map<String, Object> row : results) {
+            Long listingId = ((Number) row.get("id")).longValue();
             listingIds.add(listingId);
             
-            // 마지막 컬럼이 is_favorite
-            Object isFavoriteObj = row[row.length - 1];
+            Object isFavoriteObj = row.get("is_favorite");
             Boolean isFavorite = false;
             if (isFavoriteObj instanceof Boolean) {
                 isFavorite = (Boolean) isFavoriteObj;
@@ -160,8 +108,11 @@ public class ListingService {
             favoriteMap.put(listingId, isFavorite);
         }
 
-        // 한 번의 쿼리로 모든 Listing 조회
-        List<Listing> listings = listingRepository.findAllById(listingIds);
+        // Listing 조회
+        List<Listing> listings = listingIds.stream()
+                .map(listingMapper::findById)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
         
         // 순서 유지를 위해 Map으로 변환
         java.util.Map<Long, Listing> listingMap = listings.stream()
@@ -252,7 +203,7 @@ public class ListingService {
     }
 
     public ListingDto getListingById(Long id, Long userId) {
-        Listing listing = listingRepository.findByIdWithDetails(id);
+        Listing listing = listingMapper.findByIdWithDetails(id);
         if (listing == null) {
             throw new RuntimeException("매물을 찾을 수 없습니다.");
         }
@@ -271,11 +222,15 @@ public class ListingService {
             throw new RuntimeException("건물 정보가 없습니다.");
         }
         
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다. 로그인이 필요합니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다. 로그인이 필요합니다.");
+        }
 
-        Building building = buildingRepository.findById(listingDto.getBuilding().getId())
-                .orElseThrow(() -> new RuntimeException("건물을 찾을 수 없습니다. 건물 ID: " + listingDto.getBuilding().getId()));
+        Building building = buildingMapper.findById(listingDto.getBuilding().getId());
+        if (building == null) {
+            throw new RuntimeException("건물을 찾을 수 없습니다. 건물 ID: " + listingDto.getBuilding().getId());
+        }
 
         Listing listing = Listing.builder()
                 .title(listingDto.getTitle())
@@ -289,15 +244,20 @@ public class ListingService {
                 .building(building)
                 .user(user)
                 .build();
+        
+        // @PrePersist 대신 수동으로 createdAt 설정
+        listing.setCreatedAt(java.time.LocalDateTime.now());
 
-        listing = listingRepository.save(listing);
+        listingMapper.insert(listing);
         return listingDtoMapper.toDto(listing);
     }
 
     @Transactional
     public ListingDto updateListing(Long id, ListingDto listingDto, Long userId) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingMapper.findById(id);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
         if (!listing.getUser().getId().equals(userId)) {
             throw new RuntimeException("권한이 없습니다.");
@@ -312,33 +272,37 @@ public class ListingService {
         listing.setFloor(listingDto.getFloor());
         listing.setImageUrl(listingDto.getImage());
 
-        listing = listingRepository.save(listing);
+        listingMapper.update(listing);
         return listingDtoMapper.toDto(listing);
     }
 
     @Transactional
     public void deleteListing(Long id, Long userId) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingMapper.findById(id);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
         if (!listing.getUser().getId().equals(userId)) {
             throw new RuntimeException("권한이 없습니다.");
         }
 
-        listingRepository.delete(listing);
+        listingMapper.delete(id);
     }
 
     @Transactional
     public ListingDto updateListingStatus(Long id, com.Minyou.MINYOU.entity.ListingStatus status, Long userId) {
-        Listing listing = listingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingMapper.findById(id);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
         if (!listing.getUser().getId().equals(userId)) {
             throw new RuntimeException("권한이 없습니다.");
         }
 
         listing.setStatus(status);
-        listing = listingRepository.save(listing);
+        listingMapper.update(listing);
         return listingDtoMapper.toDto(listing);
     }
 
@@ -346,7 +310,7 @@ public class ListingService {
      * Building ID로 매물 목록 조회
      */
     public List<ListingDto> getListingsByBuildingId(Long buildingId, Long userId) {
-        List<Listing> listings = listingRepository.findByBuildingId(buildingId);
+        List<Listing> listings = listingMapper.findByBuildingId(buildingId);
         
         if (userId != null) {
             // 찜 여부 포함하여 조회
@@ -370,7 +334,7 @@ public class ListingService {
      * 사용자 ID로 매물 목록 조회
      */
     public List<ListingDto> getUserListings(Long userId) {
-        List<Listing> listings = listingRepository.findByUserIdWithDetails(userId);
+        List<Listing> listings = listingMapper.findByUserIdWithDetails(userId);
         return listings.stream()
                 .map(listingDtoMapper::toDto)
                 .collect(Collectors.toList());

@@ -8,10 +8,10 @@ import com.Minyou.MINYOU.entity.Building;
 import com.Minyou.MINYOU.entity.Listing;
 import com.Minyou.MINYOU.entity.Review;
 import com.Minyou.MINYOU.entity.User;
-import com.Minyou.MINYOU.repository.BuildingRepository;
-import com.Minyou.MINYOU.repository.ListingRepository;
-import com.Minyou.MINYOU.repository.ReviewRepository;
-import com.Minyou.MINYOU.repository.UserRepository;
+import com.Minyou.MINYOU.mapper.BuildingMapper;
+import com.Minyou.MINYOU.mapper.ListingMapper;
+import com.Minyou.MINYOU.mapper.ReviewMapper;
+import com.Minyou.MINYOU.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,30 +23,34 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReviewService {
-    private final ReviewRepository reviewRepository;
-    private final ListingRepository listingRepository;
-    private final BuildingRepository buildingRepository;
-    private final UserRepository userRepository;
+    private final ReviewMapper reviewMapper;
+    private final ListingMapper listingMapper;
+    private final BuildingMapper buildingMapper;
+    private final UserMapper userMapper;
 
     public List<ReviewDto> getListingReviews(Long listingId) {
-        return reviewRepository.findByListingId(listingId).stream()
+        return reviewMapper.findByListingId(listingId).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
     public List<ReviewDto> getBuildingReviews(Long buildingId) {
-        return reviewRepository.findByBuildingId(buildingId).stream()
+        return reviewMapper.findByBuildingId(buildingId).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public ReviewDto createListingReview(Long listingId, ReviewDto reviewDto, Long userId) {
-        Listing listing = listingRepository.findById(listingId)
-                .orElseThrow(() -> new RuntimeException("매물을 찾을 수 없습니다."));
+        Listing listing = listingMapper.findById(listingId);
+        if (listing == null) {
+            throw new RuntimeException("매물을 찾을 수 없습니다.");
+        }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         Review review = Review.builder()
                 .title(reviewDto.getTitle())
@@ -58,18 +62,25 @@ public class ReviewService {
                 .listing(listing)
                 .user(user)
                 .build();
+        
+        // @PrePersist 대신 수동으로 createdAt 설정
+        review.setCreatedAt(java.time.LocalDateTime.now());
 
-        review = reviewRepository.save(review);
+        reviewMapper.insert(review);
         return convertToDto(review);
     }
 
     @Transactional
     public ReviewDto createBuildingReview(Long buildingId, ReviewDto reviewDto, Long userId) {
-        Building building = buildingRepository.findById(buildingId)
-                .orElseThrow(() -> new RuntimeException("건물을 찾을 수 없습니다."));
+        Building building = buildingMapper.findById(buildingId);
+        if (building == null) {
+            throw new RuntimeException("건물을 찾을 수 없습니다.");
+        }
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        User user = userMapper.findById(userId);
+        if (user == null) {
+            throw new RuntimeException("사용자를 찾을 수 없습니다.");
+        }
 
         Review review = Review.builder()
                 .title(reviewDto.getTitle())
@@ -81,15 +92,20 @@ public class ReviewService {
                 .building(building)
                 .user(user)
                 .build();
+        
+        // @PrePersist 대신 수동으로 createdAt 설정
+        review.setCreatedAt(java.time.LocalDateTime.now());
 
-        review = reviewRepository.save(review);
+        reviewMapper.insert(review);
         return convertToDto(review);
     }
 
     @Transactional
     public ReviewDto updateReview(Long reviewId, ReviewDto reviewDto, Long userId) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("리뷰를 찾을 수 없습니다."));
+        Review review = reviewMapper.findById(reviewId);
+        if (review == null) {
+            throw new RuntimeException("리뷰를 찾을 수 없습니다.");
+        }
 
         if (!review.getUser().getId().equals(userId)) {
             throw new RuntimeException("권한이 없습니다.");
@@ -102,20 +118,22 @@ public class ReviewService {
         review.setRatingLandlord(reviewDto.getRatingLandlord());
         review.setRatingFacility(reviewDto.getRatingFacility());
 
-        review = reviewRepository.save(review);
+        reviewMapper.update(review);
         return convertToDto(review);
     }
 
     @Transactional
     public void deleteReview(Long reviewId, Long userId) {
-        Review review = reviewRepository.findById(reviewId)
-                .orElseThrow(() -> new RuntimeException("리뷰를 찾을 수 없습니다."));
+        Review review = reviewMapper.findById(reviewId);
+        if (review == null) {
+            throw new RuntimeException("리뷰를 찾을 수 없습니다.");
+        }
 
         if (!review.getUser().getId().equals(userId)) {
             throw new RuntimeException("권한이 없습니다.");
         }
 
-        reviewRepository.delete(review);
+        reviewMapper.delete(reviewId);
     }
 
     private ReviewDto convertToDto(Review review) {
@@ -183,7 +201,7 @@ public class ReviewService {
      * 사용자 ID로 리뷰 목록 조회
      */
     public List<ReviewDto> getUserReviews(Long userId) {
-        List<Review> reviews = reviewRepository.findByUserIdWithDetails(userId);
+        List<Review> reviews = reviewMapper.findByUserIdWithDetails(userId);
         System.out.println("=== 사용자 " + userId + "의 리뷰 조회 ===");
         System.out.println("리뷰 개수: " + reviews.size());
         

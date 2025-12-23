@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.ListingMapper">
+    
+    <resultMap id="ListingResultMap" type="com.Minyou.MINYOU.entity.Listing">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="roomType" column="room_type"/>
+        <result property="deposit" column="deposit"/>
+        <result property="monthlyRent" column="monthly_rent"/>
+        <result property="maintenanceFee" column="maintenance_fee"/>
+        <result property="areaM2" column="area_m2"/>
+        <result property="floor" column="floor"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="status" column="status" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <association property="building" column="building_id" 
+                     select="com.Minyou.MINYOU.mapper.BuildingMapper.findById" 
+                     fetchType="lazy"/>
+        <association property="user" column="user_id" 
+                     select="com.Minyou.MINYOU.mapper.UserMapper.findById" 
+                     fetchType="lazy"/>
+    </resultMap>
+    
+    <resultMap id="ListingWithDetailsResultMap" type="com.Minyou.MINYOU.entity.Listing">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="roomType" column="room_type"/>
+        <result property="deposit" column="deposit"/>
+        <result property="monthlyRent" column="monthly_rent"/>
+        <result property="maintenanceFee" column="maintenance_fee"/>
+        <result property="areaM2" column="area_m2"/>
+        <result property="floor" column="floor"/>
+        <result property="imageUrl" column="image_url"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="status" column="status" typeHandler="org.apache.ibatis.type.EnumTypeHandler"/>
+        <association property="building" javaType="com.Minyou.MINYOU.entity.Building">
+            <id property="id" column="building_id"/>
+            <result property="name" column="building_name"/>
+            <result property="roadAddress" column="building_road_address"/>
+            <result property="lat" column="building_lat"/>
+            <result property="lng" column="building_lng"/>
+            <result property="builtYear" column="building_built_year"/>
+        </association>
+        <association property="user" javaType="com.Minyou.MINYOU.entity.User">
+            <id property="id" column="user_id"/>
+            <result property="email" column="user_email"/>
+            <result property="nickname" column="user_nickname"/>
+        </association>
+    </resultMap>
+    
+    <!-- 기본 CRUD -->
+    <select id="findAll" resultMap="ListingResultMap">
+        SELECT * FROM listings
+    </select>
+    
+    <select id="findById" resultMap="ListingResultMap">
+        SELECT * FROM listings WHERE id = #{id}
+    </select>
+    
+    <select id="findByIdWithDetails" resultMap="ListingWithDetailsResultMap">
+        SELECT 
+            l.*,
+            b.id as building_id,
+            b.name as building_name,
+            b.road_address as building_road_address,
+            b.lat as building_lat,
+            b.lng as building_lng,
+            b.built_year as building_built_year,
+            u.id as user_id,
+            u.email as user_email,
+            u.nickname as user_nickname
+        FROM listings l
+        LEFT JOIN buildings b ON l.building_id = b.id
+        LEFT JOIN users u ON l.user_id = u.id
+        WHERE l.id = #{id}
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO listings (
+            title, room_type, deposit, monthly_rent, maintenance_fee,
+            area_m2, floor, image_url, status, building_id, user_id, created_at
+        ) VALUES (
+            #{title}, #{roomType}, #{deposit}, #{monthlyRent}, #{maintenanceFee},
+            #{areaM2}, #{floor}, #{imageUrl}, #{status}, #{building.id}, #{user.id}, NOW()
+        )
+    </insert>
+    
+    <update id="update">
+        UPDATE listings SET
+            title = #{title},
+            room_type = #{roomType},
+            deposit = #{deposit},
+            monthly_rent = #{monthlyRent},
+            maintenance_fee = #{maintenanceFee},
+            area_m2 = #{areaM2},
+            floor = #{floor},
+            image_url = #{imageUrl},
+            status = #{status}
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="delete">
+        DELETE FROM listings WHERE id = #{id}
+    </delete>
+    
+    <!-- 검색 및 필터링 -->
+    <select id="searchByQuery" resultMap="ListingResultMap">
+        SELECT l.* FROM listings l
+        LEFT JOIN buildings b ON l.building_id = b.id
+        WHERE b.road_address LIKE CONCAT('%', #{query}, '%')
+           OR l.title LIKE CONCAT('%', #{query}, '%')
+           OR b.name LIKE CONCAT('%', #{query}, '%')
+    </select>
+    
+    <select id="findByRoomType" resultMap="ListingResultMap">
+        SELECT * FROM listings WHERE room_type = #{roomType}
+    </select>
+    
+    <select id="findByMonthlyRentBetween" resultMap="ListingResultMap">
+        SELECT * FROM listings 
+        WHERE monthly_rent BETWEEN #{min} AND #{max}
+    </select>
+    
+    <select id="findByBuildingId" resultMap="ListingResultMap">
+        SELECT * FROM listings WHERE building_id = #{buildingId}
+    </select>
+    
+    <select id="findByUserId" resultMap="ListingResultMap">
+        SELECT * FROM listings WHERE user_id = #{userId}
+    </select>
+    
+    <select id="findByUserIdWithDetails" resultMap="ListingWithDetailsResultMap">
+        SELECT 
+            l.*,
+            b.id as building_id,
+            b.name as building_name,
+            b.road_address as building_road_address,
+            b.lat as building_lat,
+            b.lng as building_lng,
+            b.built_year as building_built_year,
+            u.id as user_id,
+            u.email as user_email,
+            u.nickname as user_nickname
+        FROM listings l
+        LEFT JOIN buildings b ON l.building_id = b.id
+        LEFT JOIN users u ON l.user_id = u.id
+        WHERE l.user_id = #{userId}
+    </select>
+    
+    <!-- 찜하기 관련 -->
+    <select id="findFavoriteListingIdsByUserId" resultType="java.lang.Long">
+        SELECT listing_id FROM favorites WHERE user_id = #{userId}
+    </select>
+    
+    <select id="findAllWithFavoriteStatus" resultType="java.util.HashMap">
+        SELECT 
+            l.*,
+            CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM listings l
+        LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = #{userId}
+        ORDER BY l.created_at DESC
+    </select>
+    
+    <select id="searchByQueryWithFavoriteStatus" resultType="java.util.HashMap">
+        SELECT 
+            l.*,
+            CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM listings l
+        LEFT JOIN buildings b ON l.building_id = b.id
+        LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = #{userId}
+        WHERE b.road_address LIKE CONCAT('%', #{query}, '%')
+           OR l.title LIKE CONCAT('%', #{query}, '%')
+           OR b.name LIKE CONCAT('%', #{query}, '%')
+        ORDER BY l.created_at DESC
+    </select>
+    
+    <select id="findByRoomTypeWithFavoriteStatus" resultType="java.util.HashMap">
+        SELECT 
+            l.*,
+            CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM listings l
+        LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = #{userId}
+        WHERE l.room_type = #{roomType}
+        ORDER BY l.created_at DESC
+    </select>
+    
+    <select id="findByMonthlyRentBetweenWithFavoriteStatus" resultType="java.util.HashMap">
+        SELECT 
+            l.*,
+            CASE WHEN f.user_id IS NOT NULL THEN true ELSE false END as is_favorite
+        FROM listings l
+        LEFT JOIN favorites f ON l.id = f.listing_id AND f.user_id = #{userId}
+        WHERE l.monthly_rent BETWEEN #{min} AND #{max}
+        ORDER BY l.created_at DESC
+    </select>
+    
+</mapper>
+

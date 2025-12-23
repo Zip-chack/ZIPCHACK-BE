@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.ChatMessageMapper">
+    
+    <resultMap id="ChatMessageResultMap" type="com.Minyou.MINYOU.entity.ChatMessage">
+        <id property="id" column="id"/>
+        <result property="senderId" column="sender_id"/>
+        <result property="content" column="content"/>
+        <result property="readByOwner" column="read_by_owner"/>
+        <result property="readByBuyer" column="read_by_buyer"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <association property="chatRoom" column="room_id" 
+                     select="com.Minyou.MINYOU.mapper.ChatRoomMapper.findById" 
+                     fetchType="lazy"/>
+    </resultMap>
+    
+    <select id="findAll" resultMap="ChatMessageResultMap">
+        SELECT * FROM chat_message
+    </select>
+    
+    <select id="findById" resultMap="ChatMessageResultMap">
+        SELECT * FROM chat_message WHERE id = #{id}
+    </select>
+    
+    <select id="findByChatRoomIdOrderByCreatedAtAsc" resultMap="ChatMessageResultMap">
+        SELECT * FROM chat_message 
+        WHERE room_id = #{roomId}
+        ORDER BY created_at ASC
+    </select>
+    
+    <select id="countUnreadMessagesByUserId" resultType="long">
+        SELECT COUNT(cm.id) FROM chat_message cm
+        JOIN chat_room cr ON cm.room_id = cr.id
+        WHERE (cr.owner_id = #{userId} OR cr.buyer_id = #{userId})
+          AND cm.sender_id != #{userId}
+          AND ((cr.owner_id = #{userId} AND cm.read_by_owner = false) OR
+               (cr.buyer_id = #{userId} AND cm.read_by_buyer = false))
+    </select>
+    
+    <select id="countUnreadMessagesByChatRoomIdAndUserId" resultType="long">
+        SELECT COUNT(cm.id) FROM chat_message cm
+        JOIN chat_room cr ON cm.room_id = cr.id
+        WHERE cm.room_id = #{chatRoomId}
+          AND cm.sender_id != #{userId}
+          AND ((cr.owner_id = #{userId} AND cm.read_by_owner = false) OR
+               (cr.buyer_id = #{userId} AND cm.read_by_buyer = false))
+    </select>
+    
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_message (room_id, sender_id, content, read_by_owner, read_by_buyer, created_at, updated_at)
+        VALUES (#{chatRoom.id}, #{senderId}, #{content}, #{readByOwner}, #{readByBuyer}, NOW(), NOW())
+    </insert>
+    
+    <update id="update">
+        UPDATE chat_message SET
+            room_id = #{chatRoom.id},
+            sender_id = #{senderId},
+            content = #{content},
+            read_by_owner = #{readByOwner},
+            read_by_buyer = #{readByBuyer},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+    
+    <delete id="delete">
+        DELETE FROM chat_message WHERE id = #{id}
+    </delete>
+    
+    <delete id="deleteByChatRoomId">
+        DELETE FROM chat_message WHERE room_id = #{roomId}
+    </delete>
+    
+</mapper>
+

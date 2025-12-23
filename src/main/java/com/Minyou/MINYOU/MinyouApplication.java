@@ -3,14 +3,12 @@ package com.Minyou.MINYOU;
 import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 @SpringBootApplication
-@EnableJpaAuditing
 public class MinyouApplication {
 
 	public static void main(String[] args) {

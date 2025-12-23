@@ -2,8 +2,8 @@ package com.Minyou.MINYOU.service;
 
 import com.Minyou.MINYOU.dto.BuildingDto;
 import com.Minyou.MINYOU.entity.Building;
-import com.Minyou.MINYOU.repository.BuildingRepository;
-import com.Minyou.MINYOU.repository.ReviewRepository;
+import com.Minyou.MINYOU.mapper.BuildingMapper;
+import com.Minyou.MINYOU.mapper.ReviewMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,44 +15,49 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BuildingService {
-    private final BuildingRepository buildingRepository;
-    private final ReviewRepository reviewRepository;
+    private final BuildingMapper buildingMapper;
+    private final ReviewMapper reviewMapper;
 
     public List<BuildingDto> getAllBuildings() {
-        return buildingRepository.findAll().stream()
+        return buildingMapper.findAll().stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
 
     public BuildingDto getBuildingById(Long id) {
-        Building building = buildingRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("건물을 찾을 수 없습니다."));
+        Building building = buildingMapper.findById(id);
+        if (building == null) {
+            throw new RuntimeException("건물을 찾을 수 없습니다.");
+        }
         return convertToDto(building);
     }
 
     @Transactional
     public BuildingDto getOrCreateBuilding(Long id, BuildingDto buildingDto) {
-        return buildingRepository.findById(id)
-                .map(this::convertToDto)
-                .orElseGet(() -> {
-                    // 빌딩이 없으면 새로 생성 (지정된 ID 사용)
-                    buildingRepository.insertBuildingWithId(
-                            id,
-                            buildingDto.getName(),
-                            buildingDto.getRoadAddress(),
-                            buildingDto.getLat(),
-                            buildingDto.getLng(),
-                            buildingDto.getBuiltYear()
-                    );
-                    // 저장 후 다시 조회
-                    Building building = buildingRepository.findById(id)
-                            .orElseThrow(() -> new RuntimeException("건물 생성 후 조회 실패"));
-                    return convertToDto(building);
-                });
+        Building building = buildingMapper.findById(id);
+        if (building != null) {
+            return convertToDto(building);
+        }
+        
+        // 빌딩이 없으면 새로 생성 (지정된 ID 사용)
+        buildingMapper.insertWithId(
+                id,
+                buildingDto.getName(),
+                buildingDto.getRoadAddress(),
+                buildingDto.getLat(),
+                buildingDto.getLng(),
+                buildingDto.getBuiltYear()
+        );
+        // 저장 후 다시 조회
+        building = buildingMapper.findById(id);
+        if (building == null) {
+            throw new RuntimeException("건물 생성 후 조회 실패");
+        }
+        return convertToDto(building);
     }
 
     public List<BuildingDto> searchBuildings(String query) {
-        return buildingRepository.searchByQuery(query).stream()
+        return buildingMapper.searchByQuery(query).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
     }
@@ -67,12 +72,14 @@ public class BuildingService {
                 .builtYear(buildingDto.getBuiltYear())
                 .build();
 
-        building = buildingRepository.save(building);
+        buildingMapper.insert(building);
         return convertToDto(building);
     }
 
     private BuildingDto convertToDto(Building building) {
-        double rating = building.getReviews().stream()
+        // 리뷰 조회
+        List<com.Minyou.MINYOU.entity.Review> reviews = reviewMapper.findByBuildingId(building.getId());
+        double rating = reviews.stream()
                 .mapToDouble(review -> review.getRatingOverall())
                 .average()
                 .orElse(0.0);
@@ -85,7 +92,7 @@ public class BuildingService {
                 .lng(building.getLng())
                 .builtYear(building.getBuiltYear())
                 .rating(rating)
-                .reviewCount(building.getReviews().size())
+                .reviewCount(reviews.size())
                 .build();
     }
 }

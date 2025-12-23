@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.Minyou.MINYOU.mapper.FavoriteMapper">
+    
+    <insert id="insert">
+        INSERT INTO favorites (user_id, listing_id)
+        VALUES (#{userId}, #{listingId})
+    </insert>
+    
+    <delete id="delete">
+        DELETE FROM favorites 
+        WHERE user_id = #{userId} AND listing_id = #{listingId}
+    </delete>
+    
+    <select id="exists" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM favorites
+        WHERE user_id = #{userId} AND listing_id = #{listingId}
+    </select>
+    
+</mapper>
+
