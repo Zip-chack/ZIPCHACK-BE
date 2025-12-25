@@ -234,6 +234,7 @@ public class ListingService {
 
         Listing listing = Listing.builder()
                 .title(listingDto.getTitle())
+                .description(listingDto.getDescription())
                 .roomType(listingDto.getRoomType())
                 .deposit(listingDto.getDeposit())
                 .monthlyRent(listingDto.getMonthlyRent())
@@ -264,6 +265,7 @@ public class ListingService {
         }
 
         listing.setTitle(listingDto.getTitle());
+        listing.setDescription(listingDto.getDescription());
         listing.setRoomType(listingDto.getRoomType());
         listing.setDeposit(listingDto.getDeposit());
         listing.setMonthlyRent(listingDto.getMonthlyRent());

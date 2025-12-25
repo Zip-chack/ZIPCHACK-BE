@@ -4,8 +4,11 @@ import com.Minyou.MINYOU.dto.BuildingDto;
 import com.Minyou.MINYOU.dto.ListingDto;
 import com.Minyou.MINYOU.dto.UserDto;
 import com.Minyou.MINYOU.entity.Listing;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Listing 엔티티와 ListingDto 간의 변환을 담당하는 Mapper
@@ -13,7 +16,9 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class ListingDtoMapper {
+    private final ReviewMapper reviewMapper;
 
     /**
      * Listing 엔티티를 ListingDto로 변환
@@ -33,7 +38,10 @@ public class ListingDtoMapper {
      * @return 변환된 ListingDto
      */
     public ListingDto toDto(Listing listing, boolean isFavorite) {
-        double rating = listing.getReviews().stream()
+        // ReviewMapper를 통해 reviews 조회 (LAZY 로딩 문제 해결)
+        List<com.Minyou.MINYOU.entity.Review> reviews = reviewMapper.findByListingId(listing.getId());
+        
+        double rating = reviews.stream()
                 .mapToDouble(review -> review.getRatingOverall())
                 .average()
                 .orElse(0.0);
@@ -48,9 +56,13 @@ public class ListingDtoMapper {
             imageUrl = defaultImageUrl;
         }
         
+        String description = listing.getDescription();
+        log.debug("매물 {} description: {}", listing.getId(), description);
+        
         return ListingDto.builder()
                 .id(listing.getId())
                 .title(listing.getTitle())
+                .description(description)
                 .roomType(listing.getRoomType())
                 .deposit(listing.getDeposit())
                 .monthlyRent(listing.getMonthlyRent())
@@ -60,7 +72,7 @@ public class ListingDtoMapper {
                 .image(imageUrl)
                 .status(listing.getStatus().name())
                 .rating(rating)
-                .reviewCount(listing.getReviews().size())
+                .reviewCount(reviews.size())
                 .isFavorite(isFavorite)
                 .createdAt(listing.getCreatedAt())
                 .building(BuildingDto.builder()
