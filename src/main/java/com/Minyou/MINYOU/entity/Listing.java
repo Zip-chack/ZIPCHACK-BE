@@ -26,6 +26,9 @@ public class Listing {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Column(name = "room_type", nullable = false)
     private String roomType;
 

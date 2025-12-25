@@ -5,6 +5,7 @@
     <resultMap id="ListingResultMap" type="com.Minyou.MINYOU.entity.Listing">
         <id property="id" column="id"/>
         <result property="title" column="title"/>
+        <result property="description" column="description"/>
         <result property="roomType" column="room_type"/>
         <result property="deposit" column="deposit"/>
         <result property="monthlyRent" column="monthly_rent"/>
@@ -25,6 +26,7 @@
     <resultMap id="ListingWithDetailsResultMap" type="com.Minyou.MINYOU.entity.Listing">
         <id property="id" column="id"/>
         <result property="title" column="title"/>
+        <result property="description" column="description"/>
         <result property="roomType" column="room_type"/>
         <result property="deposit" column="deposit"/>
         <result property="monthlyRent" column="monthly_rent"/>
@@ -78,10 +80,10 @@
     
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO listings (
-            title, room_type, deposit, monthly_rent, maintenance_fee,
+            title, description, room_type, deposit, monthly_rent, maintenance_fee,
             area_m2, floor, image_url, status, building_id, user_id, created_at
         ) VALUES (
-            #{title}, #{roomType}, #{deposit}, #{monthlyRent}, #{maintenanceFee},
+            #{title}, #{description}, #{roomType}, #{deposit}, #{monthlyRent}, #{maintenanceFee},
             #{areaM2}, #{floor}, #{imageUrl}, #{status}, #{building.id}, #{user.id}, NOW()
         )
     </insert>
@@ -89,6 +91,7 @@
     <update id="update">
         UPDATE listings SET
             title = #{title},
+            description = #{description},
             room_type = #{roomType},
             deposit = #{deposit},
             monthly_rent = #{monthlyRent},

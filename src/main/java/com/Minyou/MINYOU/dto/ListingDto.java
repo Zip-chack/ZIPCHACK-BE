@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 public class ListingDto {
     private Long id;
     private String title;
+    private String description;
     private String roomType;
     private Integer deposit;
     private Integer monthlyRent;
