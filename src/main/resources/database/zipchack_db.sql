@@ -45,6 +45,7 @@ CREATE TABLE buildings (
 CREATE TABLE listings (
                           id BIGINT AUTO_INCREMENT PRIMARY KEY,
                           title VARCHAR(255) NOT NULL,
+                          description TEXT,
                           room_type VARCHAR(255) NOT NULL,
                           deposit INT NOT NULL,
                           monthly_rent INT NOT NULL,
@@ -109,17 +110,17 @@ INSERT INTO buildings (name, road_address, lat, lng, built_year) VALUES
                                                                      ('하늘빌라', '서울시 영등포구 여의도동 258-14', 37.5219, 126.9242, 2016);
 
 -- 3. Listings 테이블 데이터 삽입
-INSERT INTO listings (title, room_type, deposit, monthly_rent, maintenance_fee, area_m2, floor, image_url, created_at, building_id, user_id) VALUES
-                                                                                                                                                 ('신촌역 도보 5분 깔끔한 원룸', '원룸', 500, 50, 5, 18.5, 3, 'https://via.placeholder.com/400x300', NOW(), 2, 1),
-                                                                                                                                                 ('연남동 조용한 1.5룸 전세', '1.5룸', 1000, 0, 10, 25.0, 2, 'https://via.placeholder.com/400x300', NOW(), 1, 2),
-                                                                                                                                                 ('화곡동 신축 투룸 월세', '투룸', 1000, 70, 8, 35.5, 5, 'https://via.placeholder.com/400x300', NOW(), 3, 3),
-                                                                                                                                                 ('강남역 근처 프리미엄 원룸', '원룸', 2000, 80, 15, 20.0, 10, 'https://via.placeholder.com/400x300', NOW(), 4, 4),
-                                                                                                                                                 ('잠실역 도보 3분 1.5룸', '1.5룸', 1500, 60, 12, 28.0, 7, 'https://via.placeholder.com/400x300', NOW(), 5, 5),
-                                                                                                                                                 ('명륜동 조용한 원룸', '원룸', 800, 55, 7, 19.5, 4, 'https://via.placeholder.com/400x300', NOW(), 6, 1),
-                                                                                                                                                 ('이태원 근처 스튜디오', '원룸', 1200, 65, 10, 22.0, 6, 'https://via.placeholder.com/400x300', NOW(), 7, 2),
-                                                                                                                                                 ('여의도 뷰 좋은 투룸', '투룸', 3000, 100, 20, 42.0, 15, 'https://via.placeholder.com/400x300', NOW(), 8, 3),
-                                                                                                                                                 ('연남동 신축 원룸', '원룸', 600, 45, 5, 17.0, 2, 'https://via.placeholder.com/400x300', NOW(), 1, 4),
-                                                                                                                                                 ('신촌역 근처 깔끔한 1.5룸', '1.5룸', 900, 58, 9, 26.5, 3, 'https://via.placeholder.com/400x300', NOW(), 2, 5);
+INSERT INTO listings (title, description, room_type, deposit, monthly_rent, maintenance_fee, area_m2, floor, image_url, created_at, building_id, user_id) VALUES
+                                                                                                                                                 ('신촌역 도보 5분 깔끔한 원룸', '신촌역에서 가깝고 조용한 주택가에 위치한 깔끔한 원룸입니다.', '원룸', 500, 50, 5, 18.5, 3, 'https://via.placeholder.com/400x300', NOW(), 2, 1),
+                                                                                                                                                 ('연남동 조용한 1.5룸 전세', '연남동 핫플레이스 인근이지만 소음 없이 조용한 1.5룸입니다.', '1.5룸', 1000, 0, 10, 25.0, 2, 'https://via.placeholder.com/400x300', NOW(), 1, 2),
+                                                                                                                                                 ('화곡동 신축 투룸 월세', '첫 입주 가능한 신축 투룸으로 채광이 매우 좋습니다.', '투룸', 1000, 70, 8, 35.5, 5, 'https://via.placeholder.com/400x300', NOW(), 3, 3),
+                                                                                                                                                 ('강남역 근처 프리미엄 원룸', '강남역 도보 이용 가능한 고층 프리미엄 원룸입니다.', '원룸', 2000, 80, 15, 20.0, 10, 'https://via.placeholder.com/400x300', NOW(), 4, 4),
+                                                                                                                                                 ('잠실역 도보 3분 1.5룸', '잠실역 초역세권으로 보안이 철저하고 살기 편한 1.5룸입니다.', '1.5룸', 1500, 60, 12, 28.0, 7, 'https://via.placeholder.com/400x300', NOW(), 5, 5),
+                                                                                                                                                 ('명륜동 조용한 원룸', '성균관대 인근 공부하기 좋은 조용한 원룸입니다.', '원룸', 800, 55, 7, 19.5, 4, 'https://via.placeholder.com/400x300', NOW(), 6, 1),
+                                                                                                                                                 ('이태원 근처 스튜디오', '감각적인 인테리어의 스튜디오 타입 원룸입니다.', '원룸', 1200, 65, 10, 22.0, 6, 'https://via.placeholder.com/400x300', NOW(), 7, 2),
+                                                                                                                                                 ('여의도 뷰 좋은 투룸', '한강이 한눈에 보이는 뷰가 환상적인 투룸입니다.', '투룸', 3000, 100, 20, 42.0, 15, 'https://via.placeholder.com/400x300', NOW(), 8, 3),
+                                                                                                                                                 ('연남동 신축 원룸', '연남동 테마거리 근처 깨끗한 신축 원룸입니다.', '원룸', 600, 45, 5, 17.0, 2, 'https://via.placeholder.com/400x300', NOW(), 1, 4),
+                                                                                                                                                 ('신촌역 근처 깔끔한 1.5룸', '풀옵션이 갖춰진 몸만 들어오면 되는 깔끔한 1.5룸입니다.', '1.5룸', 900, 58, 9, 26.5, 3, 'https://via.placeholder.com/400x300', NOW(), 2, 5);
 
 -- 4. Reviews 테이블 데이터 삽입 (Listing 리뷰)
 INSERT INTO reviews (title, content, rating_overall, rating_noise, rating_landlord, rating_facility, created_at, user_id, listing_id, building_id) VALUES
